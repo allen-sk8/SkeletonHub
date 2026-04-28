@@ -1,0 +1,1 @@
+環境:conda activate skeleton_env
