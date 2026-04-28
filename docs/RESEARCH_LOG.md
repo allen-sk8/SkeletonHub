@@ -64,3 +64,33 @@
 * **FK (正向運動學)**：角度 ➔ 位置。
 * **IK (逆運動學)**：位置 ➔ 角度。
 * **Joint Regressor**：從 SMPL Mesh 頂點合成出關鍵點的權重矩陣。
+
+## 7. 數據集深挖：AMASS (Archive of Motion Capture as Surface Shapes)
+AMASS 是將多個原始動捕資料集透過 MoSh 技術擬合至 SMPL+H 模型後的集合。
+
+### 核心結構
+*   **格式**：`.npz` (NumPy Compressed)
+*   **關鍵欄位**：
+    *   **`poses`**: (T, 156) - 包含 Root Orient (3), Body Pose (63), Hand Pose (90)。
+    *   **`trans`**: (T, 3) - 全局位移。
+    *   **`betas`**: (16,) - 體型參數。
+    *   **`mocap_framerate`**: 原始採樣率（需下採樣至 20 FPS）。
+    *   **`gender`**: 性別（影響 Body Model 選擇）。
+
+### 下採樣策略 (Downsampling)
+為了符合 `Skeleton_Hub` 的標準（20 FPS），轉換器必須實作動態下採樣：
+*   `skip_step = int(mocap_framerate / 20)`
+*   採樣切片：`data[::skip_step]`
+
+### 儲存規範
+轉換後的 SMPL 數據統一儲存於 `/data/smpl/` 目錄下，並依據模型版本分層：
+*   `/data/smpl/smpl/`：標準 SMPL (24 關節 / 72 參數)。
+*   `/data/smpl/smplh/`：SMPL + Hands (52 關節 / 156 參數)。
+*   `/data/smpl/smplx/`：SMPL + Hands + Face (55 關節+)。
+
+**儲存格式**：採用 **`.pkl` (Pickle)** 字典格式，包含以下 Keys：
+*   `poses`: (T, Dim) float32
+*   `trans`: (T, 3) float32
+*   `betas`: (16,) float32
+*   `gender`: str ('male', 'female', 'neutral')
+*   `target_fps`: 20 (專案標準)
