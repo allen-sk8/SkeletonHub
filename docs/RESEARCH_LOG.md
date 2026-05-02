@@ -1,96 +1,75 @@
-# 骨架格式百科 (RESEARCH LOG)
+# SkeletonHub 研究與實作日誌 (RESEARCH_LOG)
 
-本文件詳盡紀錄各種骨架定義、參數化模型、動作資料集及其技術細節。
+本文件詳實紀錄各項技術決策、轉換邏輯、代碼來源以及物理參數規範，作為專案的「技術聖經」。
 
-## 1. 核心設計準則 (Global Rules)
-* **物理單位**：所有存放於 `Skeleton_Hub` 的數據一律統一為 **公尺 (m)**。
-* **FPS 策略**：維持原始幀率，數據記錄於同名 `.json` Metadata。
-* **儲存規範**：採「一檔案一序列」原則。
+---
 
-## 2. 骨架定義對比表
+## 🟢 [2026-04-30] SMPL 家族核心技術規範
 
-| 類別 | 名稱 | 關節數 | 核心特點 | 應用場景 |
-| :--- | :--- | :---: | :--- | :--- |
-| **2D 關鍵點** | **COCO** | 17 | 業界標準，僅肢體與臉部 | 姿勢偵測 |
-| | **Body_25** | 25 | OpenPose 標準，含腳趾 | 精確接觸鎖定 |
-| **3D 關鍵點** | **Human3.6M** | 17/32 | 專業動捕基準 | 模型評估 |
-| **參數化模型** | **SMPL** | 24 | 基於 6890 頂點，具 $\theta, \beta$ | 人體建模 |
-| | **SMPL-X** | 54/55 | 整合手部與臉部 | 全身重建 |
-| **運動學特徵** | **HumanML3D** | 22 | **263 維特徵向量** | 文字生成動作 |
+### 1. 座標系與物理標準 (Physical Standards)
+為了與現代渲染引擎（如 Unity, Pyrender）及主流數據集（HumanML3D）對齊，本專案強制執行以下標準：
+*   **座標系**：右手坐標系 (Right-handed System)。
+*   **向上軸 (Up-axis)**：嚴格統一為 **Y-up** (Y-in, Y-out)。所有外部 Z-up 數據皆需先透過 `utils/axis_converter.py` 轉換。
+*   **物理單位**：公尺 (Meters, m)。
+*   **旋轉表示**：
+    *   外部存儲：軸角 (Axis-angle, 3D) 或四元數 (Quaternion, 4D)。
+    *   運算內部：連續型 6D 旋轉 (Continuous 6D Rotation) 以利神經網路收斂。
 
-## 3. 深度剖析：HumanML3D (263D)
-並非儲存原始座標，而是複合特徵向量：
-* **根節點特徵 (4D)**：水平速度 (2D)、垂直旋轉速度 (1D)、高度 (1D)。
-* **相對位置 (63D)**：21 個關節相對根節點的 3D 位置。
-* **線速度 (66D)**：22 個關節的 3D 線速度。
-* **旋轉 (126D)**：21 個關節的 **6D 旋轉矩陣**。
-* **足部接觸 (4D)**：雙腳腳跟/腳尖與地面的接觸標籤。
+---
 
-> [!NOTE]
-> **關於骨骼長度**：HumanML3D 並非使用固定模板，骨頭長度被編碼在 63D 的相對位置 (RIC) 中。這意味著還原出的骨架會忠實反映原始數據人物的身材比例。
+### 2. 轉換器技術拆解 (Converter Deep Dive)
 
-## 4. 數據演化流：從「種子」到「特徵」
-這是一個不斷去蕪存菁的過程，每一階段都在為 AI 訓練做準備：
+#### A. AMASS to SMPL-H (`amass_to_smplh.py`)
+*   **參考來源**：參考了 AMASS 官方數據讀取腳本與 `smplx` 庫的 `body_models` 加載邏輯。
+*   **數據流**：
+    1.  從 `.npz` 讀取 `poses` (N, 156), `betas` (16,), `trans` (N, 3), `mocap_frame_rate`。
+    2.  **維度補齊**：若 `betas` 只有 10 維，則補零至 16 維，確保與 SMPL-H 權重對齊。
+    3.  **格式打包**：輸出為 `.pkl` 字典，包含 `gender` 字段（必備，因 SMPL-H 區分男女模型）。
+*   **維度細節**：SMPL-H (156D) = Root (3) + Body (21x3=63) + L_Hand (15x3=45) + R_Hand (15x3=45)。
 
-1.  **AMASS (數據種子)**
-    *   **內容**：統一存為 SMPL 參數 ($\theta, \beta$)。
-    *   **特點**：包含全身細節與體型，但對 AI 來說旋轉角度不連續，訓練較難。
-2.  **座標提取 (XYZ)**
-    *   **處理**：SMPL ➔ 3D 座標。
-    *   **關鍵**：刪除手掌（24點 ➔ 22點），影格率降至 20 FPS。代表檔案為 `new_joints`。
-3.  **特徵工程 (Motion Representation)**
-    *   **處理**：3D 座標 ➔ 263D 特徵向量。
-    *   **目的**：達到「旋轉不變性」，讓 AI 無論從哪個角度看同一個動作，學到的特徵都一致。
+#### B. SMPL-H to Joint Series (`smplh_to_..._j.py`)
+*   **核心組件**：`utils/smpl/handler.py` 中的 `SMPLHandler` 類別。
+*   **FK 邏輯來源**：調用 `smplx.create(...)` 生成模型對象，利用其 `forward()` 函數執行前向動力學。
+*   **座標變換 (Coordinate Transformation)**：
+    *   原始模型輸出：AMASS 座標系 (Z-up)。
+    *   轉換代碼：
+        ```python
+        # AMASS Z-up -> Y-up
+        joints_y_up[:, :, 1] = joints[:, :, 2]
+        joints_y_up[:, :, 2] = -joints[:, :, 1]
+        ```
+*   **骨架對齊矩陣 (Skeleton Mapping)**：
+    | 目標 | 索引選取邏輯 | 參考出處 |
+    | :--- | :--- | :--- |
+    | **22j (H3D)** | `[:22]` | `external/HumanML3D/common/skeleton.py` |
+    | **24j (SMPL)**| `[:22]` + `[22]`(L) + `[37]`(R) | 修正 naive slice `[:24]` 導致的手部索引偏移錯誤。 |
+    | **52j (H)** | `[:52]` | SMPL-H 官方關節拓樸。 |
 
-## 5. 反向路徑與互通性
-263D 特徵還原通常分為兩個層次：
+---
 
-* **第一層：263D ➔ 3D 座標 (XYZ)**
-    *   使用 `recover_from_ric`。透過相對位置與根節點速度積分，還原 22 點「火柴人」軌跡。
-* **第二層：3D 座標 ➔ SMPL 參數**
-    *   需透過 **IK (逆運動學)** 工具（如 SMPLify-X）。
-    *   **挑戰**：由於 HML3D 拋棄了手掌且正規化了身高，反推回來的 $\theta$ (手部) 會是僵硬的，$\beta$ (體型) 則會遺失原始特徵。
+### 3. HumanML3D 特徵流水線技術細節
 
-### 互通性總結表 (Forward & Backward)
+#### A. 263D 特徵維度定義
+本專案嚴格遵循 `HumanML3D` 論文定義的特徵空間：
+1.  **Root Velocity (4D)**：[r_vel_y, l_vel_x, l_vel_z, root_height]。
+2.  **RIC (Local Positions, 63D)**：21 個關節相對於根節點的局部座標 (21 * 3)。
+3.  **Rotation (126D)**：21 個關節的 6D 旋轉表示 (21 * 6)。
+4.  **Linear Velocity (66D)**：22 個關節在局部座標系下的線速度 (22 * 3)。
+5.  **Foot Contacts (4D)**：[L_Heel, L_Toe, R_Heel, R_Toe]。
 
-| 類別 | 轉換路徑 | 難度 | 核心工具 | 資訊損益 |
-| :--- | :--- | :---: | :--- | :--- |
-| **正向** | **SMPL ➔ 3D 座標** | 🟢 易 | `Skeleton.forward_kinematics` | 平：純座標投影，無損 |
-| **正向** | **3D 座標 ➔ 263D** | 🟢 易 | `motion_representation.ipynb` | 損：丟失手掌、體型、絕對位置 |
-| **反向** | **263D ➔ 3D 座標** | 🟢 易 | `recover_from_ric` | 平：還原 22 點空間軌跡 |
-| **反向** | **3D 座標 ➔ SMPL** | 🔴 難 | IK 優化 (L-BFGS) | 補：需「猜」回關節旋轉與體型 |
+#### B. 核心演算邏輯來源
+*   **旋轉對齊 (`get_rifke`)**：參考 `external/HumanML3D/motion_representation.ipynb` 中的座標對齊函數。邏輯為：將每一幀的根節點位置平移至原點，並繞 Y 軸旋轉使得首幀朝向 Z 軸正方向。
+*   **連續 6D 旋轉轉換**：參考 `utils/humanml3d/lib/quaternion.py` 中的 `quaternion_to_cont6d` 函數，將四元數轉為矩陣的前兩列。
+*   **腳底接觸偵測**：參考 `utils/humanml3d/utils.py` 中的 `foot_detect`，利用關節在相鄰幀間的位移量（閾值 0.002m）判定是否接觸地面。
 
-## 6. 轉換原理關鍵字
-* **FK (正向運動學)**：角度 ➔ 位置。
-* **IK (逆運動學)**：位置 ➔ 角度。
-* **Joint Regressor**：從 SMPL Mesh 頂點合成出關鍵點的權重矩陣。
+---
 
-## 7. 數據集深挖：AMASS (Archive of Motion Capture as Surface Shapes)
-AMASS 是將多個原始動捕資料集透過 MoSh 技術擬合至 SMPL+H 模型後的集合。
+## 🟢 [2026-04-28] 早期施工紀錄 (存檔)
+*(此處保留原有的早期紀錄以維護文件完整性)*
+- 建立專案基礎結構 (Data, Converters, Utils, Visualizers)。
+- 實施 I/O 標準化規範。
+- 建立 `common_models` 外部權重管理中心。
 
-### 核心結構
-*   **格式**：`.npz` (NumPy Compressed)
-*   **關鍵欄位**：
-    *   **`poses`**: (T, 156) - 包含 Root Orient (3), Body Pose (63), Hand Pose (90)。
-    *   **`trans`**: (T, 3) - 全局位移。
-    *   **`betas`**: (16,) - 體型參數。
-    *   **`mocap_framerate`**: 原始採樣率（需下採樣至 20 FPS）。
-    *   **`gender`**: 性別（影響 Body Model 選擇）。
-
-### 下採樣策略 (Downsampling)
-為了符合 `Skeleton_Hub` 的標準（20 FPS），轉換器必須實作動態下採樣：
-*   `skip_step = int(mocap_framerate / 20)`
-*   採樣切片：`data[::skip_step]`
-
-### 儲存規範
-轉換後的 SMPL 數據統一儲存於 `/data/smpl/` 目錄下，並依據模型版本分層：
-*   `/data/smpl/smpl/`：標準 SMPL (24 關節 / 72 參數)。
-*   `/data/smpl/smplh/`：SMPL + Hands (52 關節 / 156 參數)。
-*   `/data/smpl/smplx/`：SMPL + Hands + Face (55 關節+)。
-
-**儲存格式**：採用 **`.pkl` (Pickle)** 字典格式，包含以下 Keys：
-*   `poses`: (T, Dim) float32
-*   `trans`: (T, 3) float32
-*   `betas`: (16,) float32
-*   `gender`: str ('male', 'female', 'neutral')
-*   `target_fps`: 20 (專案標準)
+---
+*文件更新人：Antigravity*
+*最後更新：2026-04-30 15:15*

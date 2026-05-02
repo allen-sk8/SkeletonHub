@@ -14,4 +14,8 @@ venv/
 .DS_Store
 
 # Original content
-/external
+/external/*
+!/external/smplify-x
+!/external/human_body_prior
+/common_models/*
+!/common_models/README.md

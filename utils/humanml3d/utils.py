@@ -3,9 +3,9 @@ import numpy as np
 import os
 import sys
 
-from .humanml3d_lib.skeleton import Skeleton
-from .humanml3d_lib.quaternion import qrot, qinv, quaternion_to_cont6d, qbetween_np, qrot_np, qinv_np, qfix, qmul_np, quaternion_to_cont6d_np
-from .humanml3d_lib.paramUtil import t2m_raw_offsets, t2m_kinematic_chain
+from .lib.skeleton import Skeleton
+from .lib.quaternion import qrot, qinv, quaternion_to_cont6d, qbetween_np, qrot_np, qinv_np, qfix, qmul_np, quaternion_to_cont6d_np
+from .lib.paramUtil import t2m_raw_offsets, t2m_kinematic_chain
 
 # --- HumanML3D Constants ---
 # Lower legs
