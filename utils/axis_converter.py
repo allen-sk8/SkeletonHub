@@ -17,6 +17,16 @@ def convert_joints_z_to_y(joints):
     converted[..., 2] = -joints[..., 1]
     return converted
 
+def convert_joints_y_to_z(joints):
+    """
+    將 Y-up 關節座標轉換為 Z-up (擬合器預期)
+    公式：new_pos = [x, -z, y] (逆變換)
+    """
+    converted = joints.copy()
+    converted[..., 1] = -joints[..., 2]
+    converted[..., 2] = joints[..., 1]
+    return converted
+
 def convert_smpl_z_to_y(data):
     """
     將 SMPL 參數從 Z-up 轉換為 Y-up

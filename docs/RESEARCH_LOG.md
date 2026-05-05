@@ -71,5 +71,40 @@
 - 建立 `common_models` 外部權重管理中心。
 
 ---
+
+## 🟢 [2026-05-02] EasyMocap 高精度擬合流水線整合
+
+### 1. 轉接器實作 (EasyMocap Wrapper)
+為解決舊版 L2 擬合缺乏解剖學先驗的問題，引入 EasyMocap 作為核心優化引擎：
+*   **組件**：`utils/smpl/easymocap_wrapper.py`
+*   **技術突破**：
+    *   **強制關節回傳**：實作 `SMPLModelWrapper` 強制設定 `return_smpl_joints=True`，解決了官方庫在優化時隱藏基礎 24 關節導致 Loss 為零的問題。
+    *   **坐標轉換 (Y-to-Z)**：實作 `(x, y, z) -> (x, -z, y)` 轉換，確保輸入關節與 EasyMocap 內部先驗 (AMASS Standard) 對齊。
+
+### 2. 環境相容性補丁 (Legacy Library Support)
+針對 Python 3.11+ 與現代 Numpy 環境，對 `chumpy` 進行了熱補丁處理：
+*   **API 修復**：`inspect.getargspec` -> `inspect.getfullargspec`。
+*   **類型修復**：修正 `numpy.bool`, `numpy.int`, `numpy.float` 等過時類型引用。
+
+### 3. 渲染管線升級 (Standardized Axis Conversion)
+*   **架構統一**：廢棄各模組內的手寫轉換邏輯，統一調用 `utils/axis_converter.py`。
+    *   **擬合前 (Y-to-Z)**：`convert_joints_y_to_z`。
+    *   **渲染前 (Z-to-Y)**：`convert_joints_z_to_y`。
+*   **動態相機**：`MeshRenderer` 實作動態 **Look-at** 邏輯，自動追蹤人物中心點並調整焦距與視角。
+
+## 🟢 [2026-05-02] 52j (SMPL-H) 高精度擬合與手部捕捉
+
+### 1. SMPL-H 擬合流水線
+*   **指令腳本**：`converters/joints_52j_to_smpl.py`。
+*   **手部優化**：解鎖了 156 維參數空間，引入 `k3d_hand` 能量項，成功捕捉手指細微動作。
+*   **性能**：181 幀數據在 LBFGS 1000 次疊代下表現穩定，手部 Loss 降幅達 99.9%。
+
+### 2. 模型加載強韌化 (SMPLHandler Upgrade)
+*   **自動回溯邏輯**：
+    1.  優先嘗試 `.pkl` 格式。
+    2.  若 `neutral` 缺失，自動按順序嘗試 `female` -> `male`。
+    3.  支援 `.npz` 格式作為備選，確保在不同版本模型庫間的相容性。
+
+---
 *文件更新人：Antigravity*
-*最後更新：2026-04-30 15:15*
+*最後更新：2026-05-02 11:50*

@@ -3,12 +3,8 @@ import numpy as np
 import argparse
 import pickle
 import sys
-
-# Example Usage:
-# python converters/amass_to_smplh.py data/amass/samples_smpl_H_G/walking_01_poses.npz --fps 20
-
-# 將專案路徑加入以匯入工具
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from utils.axis_converter import convert_smpl_z_to_y
 
 def convert_amass_to_smplh(src_path, save_path, target_fps=20):
     """
@@ -25,24 +21,27 @@ def convert_amass_to_smplh(src_path, save_path, target_fps=20):
         print(f"❌ 讀取 .npz 失敗: {e}")
         return
 
-    fps = float(bdata['mocap_framerate'])
+    # 🌟 處理 FPS 缺失的情況
+    fps = float(bdata.get('mocap_framerate', 20.0))
     down_sample = max(1, int(fps / target_fps))
     
     try:
-        from utils.axis_converter import convert_smpl_z_to_y
-        
         data = {
             'poses': bdata['poses'][::down_sample, :156].astype(np.float32),
             'trans': bdata['trans'][::down_sample, ...].astype(np.float32),
             'betas': bdata['betas'][:16].astype(np.float32), 
-            'gender': bdata['gender'].decode('utf-8') if hasattr(bdata['gender'], 'decode') else str(bdata['gender']),
+            'gender': str(bdata.get('gender', 'neutral')),
             'mocap_framerate': fps,
             'target_fps': target_fps,
             'source_path': os.path.abspath(src_path)
         }
-        data['gender'] = data['gender'].replace("b'", "").replace("'", "").lower()
         
-        # AMASS 是 Z-up，我們專案統一為 Y-up，所以自動轉換
+        # 清理性別字串格式
+        data['gender'] = data['gender'].replace("b'", "").replace("'", "").lower()
+        if data['gender'] not in ['male', 'female', 'neutral']:
+            data['gender'] = 'neutral'
+        
+        # 🌟 AMASS 是 Z-up，我們專案統一為 Y-up，呼叫統一轉換工具
         data = convert_smpl_z_to_y(data)
         
     except KeyError as e:

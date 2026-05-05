@@ -44,14 +44,34 @@ graph TD
 
 ---
 
-## 📂 快速啟動
-### 1. 數據探針 (Inspector)
+## 📂 快速啟動與自動化腳本 (Pipelines)
+
+為了避免多次轉換後檔案混淆，所有轉換器的輸出檔案皆會**自動加上對應的前綴**（例如 `smplh_`, `52j_`, `263d_` 等）。
+
+我們提供了幾個整合好的 `.sh` 腳本，方便一鍵執行多步轉換：
+
+### 1. AMASS 到全套特徵 (AMASS to 263D Pipeline)
+將 `.npz` 格式的 AMASS 動作，依序轉為 SMPL-H、22j 關節座標，最後生成 263D 特徵，**並自動生成 SMPL-H Mesh 視覺化影片**：
+```bash
+./pipeline_amass_to_263d.sh path/to/your/amass_action.npz
+```
+* 輸出：`smplh_*.pkl`, `22j_*.npy`, `263d_*.npy` 以及視覺化影片。
+
+### 2. SMPL-H 參數到多種關節格式 (SMPL-H to All Formats)
+將 `.pkl` 格式的 SMPL-H 參數一次性轉為 52j, 24j, 22j 以及 263D 特徵，**並自動生成 SMPL-H Mesh 視覺化影片**：
+```bash
+./pipeline_smplh_to_all.sh path/to/your/smplh_action.pkl
+```
+* 輸出：`52j_*.npy`, `24j_*.npy`, `22j_*.npy`, `263d_*.npy` 以及視覺化影片。
+
+### 3. 數據探針 (Inspector)
 ```bash
 python inspector.py path/to/your/data.npy
 ```
-### 2. 視覺化 (Visualizer)
+
+### 4. 視覺化 (Visualizer)
 ```bash
-python visualizers/vis_smpl_joints.py data/smpl_joints/samples_24j/test.npy
+python visualizers/vis_smpl_joints.py data/smpl_joints/samples_24j/24j_test.npy
 ```
 
 ---

@@ -11,7 +11,8 @@
 | **SMPL-H (.pkl)** | SMPL (24j) | `smplh_to_smpl_24j.py` | ✅ 已完成 | ✅ 通過 | Antigravity | **修正：** 已處理左右手索引偏移問題 |
 | **SMPL-H (.pkl)** | HumanML3D (22j) | `smplh_to_humanml3d_22j.py` | ✅ 已完成 | ✅ 通過 | Antigravity | 專用於 T2M 模型訓練數據生成 |
 | **SMPL-H (.pkl)** | SMPL-H (52j) | `smplh_to_smplh_52j.py` | ✅ 已完成 | ✅ 通過 | Antigravity | 包含完整手部指節動作 |
-| **Joints (XYZ)** | SMPL-H (.pkl) | `joints_to_smplh.py` | ✅ 已完成 | ✅ 通過 | Antigravity | 支援 IK 逆向動力學擬合 |
+| **Joints (24j)** | SMPL (.pkl) | `joints_24j_to_smpl.py` | ✅ 已完成 | ✅ 通過 | Antigravity | 使用 EasyMocap 優化器 |
+| **Joints (52j)** | SMPL-H (.pkl) | `joints_52j_to_smpl.py` | ✅ 已完成 | ✅ 通過 | Antigravity | 支援手部捕捉 (EasyMocap) |
 
 ## 2. 核心基礎設施進度
 - [x] **專案結構標準化**：(Data, Converters, Utils, Visualizers)

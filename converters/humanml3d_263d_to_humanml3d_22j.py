@@ -60,6 +60,6 @@ if __name__ == "__main__":
         default_dir = "data/smpl_joints/samples_22j"
         os.makedirs(default_dir, exist_ok=True)
         base_name = os.path.basename(args.input)
-        output = os.path.join(default_dir, base_name)
+        output = os.path.join(default_dir, "22j_" + base_name.replace("263d_", ""))
         
     convert_humanml3d_263d_to_humanml3d_22j(args.input, output)

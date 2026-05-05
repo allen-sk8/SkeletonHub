@@ -3,6 +3,8 @@ import pickle
 import sys
 import os
 
+#example: python inspector.py data/smpl_joints/samples_52j/walking_01_poses.npy
+
 def inspect_file(file_path):
     """
     通用動作數據探針：支援 .npy 與 .pkl 檔案。

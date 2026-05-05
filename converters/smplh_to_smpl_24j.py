@@ -78,6 +78,6 @@ if __name__ == "__main__":
         default_dir = "data/smpl_joints/samples_24j"
         os.makedirs(default_dir, exist_ok=True)
         base_name = os.path.basename(args.input).replace('.pkl', '')
-        output = os.path.join(default_dir, f"{base_name}.npy")
+        output = os.path.join(default_dir, f"24j_{base_name.replace('smplh_', '')}.npy")
     
     convert_smplh_to_smpl_24j(args.input, output)

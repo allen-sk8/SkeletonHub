@@ -13,12 +13,12 @@ class MeshRenderer:
         self.height = height
         self.bg_color = background_color # 改為白色背景
 
-    def _create_ground_plane(self, center_x=0, center_z=0, radius=10):
+    def _create_ground_plane(self, center_x=0, center_z=0, floor_y=0.0, radius=10):
         verts = np.array([
-            [center_x - radius, 0, center_z - radius],
-            [center_x + radius, 0, center_z - radius],
-            [center_x + radius, 0, center_z + radius],
-            [center_x - radius, 0, center_z + radius]
+            [center_x - radius, floor_y, center_z - radius],
+            [center_x + radius, floor_y, center_z - radius],
+            [center_x + radius, floor_y, center_z + radius],
+            [center_x - radius, floor_y, center_z + radius]
         ])
         faces = np.array([[0, 1, 2], [0, 2, 3]])
         ground = trimesh.Trimesh(vertices=verts, faces=faces, process=False)
@@ -35,37 +35,53 @@ class MeshRenderer:
         axis_mesh = trimesh.creation.axis(origin_size=0.01, axis_radius=0.005, axis_length=length, transform=transform)
         return pyrender.Mesh.from_trimesh(axis_mesh, smooth=False)
 
-    def render_motion(self, vertices, faces, save_path, fps=20, title="SMPL-H Mesh", axis_length=0.2):
+    def render_motion(self, vertices, faces, save_path, fps=20, title="SMPL Mesh", axis_length=0.2):
         T = vertices.shape[0]
         
         # 🌟 計算人物中心點，避免相機拍空
         center = np.mean(vertices[0], axis=0)
         print(f"📍 人物初始中心點: {center}")
+        
+        # 🌟 找出最低點，把地板放在腳底
+        floor_y = np.min(vertices[:, :, 1])
+        print(f"📍 地板高度設定為: {floor_y}")
 
         scene = pyrender.Scene(bg_color=self.bg_color, ambient_light=[0.5, 0.5, 0.5])
         
         # 加入在地心位置的地平面與座標軸
-        scene.add(self._create_ground_plane(center_x=center[0], center_z=center[2]))
+        scene.add(self._create_ground_plane(center_x=center[0], center_z=center[2], floor_y=floor_y))
         scene.add(self._create_axes(origin=[0, 0, 0], length=axis_length))
         
         # 🌟 動態設定相機位置，指向人物中心
+        # camera_pos: [左右偏移, 高度, 前後距離]
+        # camera_target: 相機注視的點 (y + 1.0 約為胸部高度)
+        camera_pos = np.array([center[0], center[1] + 1.2, center[2] + 4.0])
+        camera_target = np.array([center[0], center[1] + 0, center[2]])
+        
+        # 計算相機矩陣 (Look-at)
+        forward = camera_pos - camera_target
+        forward /= np.linalg.norm(forward)
+        right = np.cross([0, 1, 0], forward)
+        right /= np.linalg.norm(right)
+        up = np.cross(forward, right)
+        
+        camera_pose = np.eye(4)
+        camera_pose[:3, 0] = right
+        camera_pose[:3, 1] = up
+        camera_pose[:3, 2] = forward
+        camera_pose[:3, 3] = camera_pos
+        
         camera = pyrender.PerspectiveCamera(yfov=np.deg2rad(45.0))
-        camera_pose = np.array([
-            [1, 0, 0, center[0]],
-            [0, 0.866, 0.5, center[1] + 2.0],
-            [0, -0.5, 0.866, center[2] + 6.0],
-            [0, 0, 0, 1]
-        ])
         scene.add(camera, pose=camera_pose)
         
-        light = pyrender.DirectionalLight(color=[1.0, 1.0, 1.0], intensity=4.0)
+        light = pyrender.DirectionalLight(color=[1.0, 1.0, 1.0], intensity=5.0)
         scene.add(light, pose=camera_pose)
         
         r = pyrender.OffscreenRenderer(self.width, self.height)
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         vw = cv2.VideoWriter(save_path, fourcc, fps, (self.width, self.height))
         
-        print(f"🎬 正在渲染 SMPL-H Mesh 影片...")
+        print(f"🎬 正在渲染 SMPL Mesh 影片...")
         for t in tqdm.tqdm(range(T)):
             mesh = trimesh.Trimesh(vertices=vertices[t], faces=faces, process=False)
             material = pyrender.MetallicRoughnessMaterial(
