@@ -1,3 +1,14 @@
+"""
+HumanML3D 22j to 263D Feature Extractor Converter
+
+Usage:
+    python converters/humanml3d_22j_to_humanml3d_263d.py <input_22j.npy> [--output <output_263d.npy>] [--vis]
+
+Technical Details & Data Sources:
+    - Input: 3D Joint coordinates (22 joints, Shape: T, 22, 3) in Y-up.
+    - Feature extraction: Produces 263D representation (RIC, rotation continuous 6D, velocities, foot contact).
+    - Source: HumanML3D Project (https://github.com/GuoAndong/HumanML3D)
+"""
 import numpy as np
 import os
 import sys

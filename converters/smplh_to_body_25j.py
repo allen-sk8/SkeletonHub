@@ -1,3 +1,14 @@
+"""
+SMPL-H to OpenPose BODY25 Converter
+
+Usage:
+    python converters/smplh_to_body_25j.py <input_smplh.pkl> [--output <output_body25.npy>] [--regressor <regressor_path>] [--vis]
+
+Technical Details & Data Sources:
+    - Input: SMPL-H parameters (.pkl).
+    - Vertices regression: Converts SMPL-H parameters to 6890 mesh vertices via SMPLHandler, then maps them to OpenPose BODY25 joints via J_regressor_body25.npy.
+    - Source: Joint Regressor from EasyMocap (https://github.com/zju3dv/EasyMocap)
+"""
 import os
 import numpy as np
 import argparse

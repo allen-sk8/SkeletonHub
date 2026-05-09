@@ -1,13 +1,13 @@
 """
-24 Joint XYZ → SMPL 參數轉換器 (EasyMocap)
+24-Joint 3D coordinates to Standard SMPL Parameter Converter (EasyMocap Optimization)
 
-使用 EasyMocap 進行 SMPL fitting。
-輸入：(T, 24, 3) 的 Y-up 公尺制 3D 關節座標
-輸出：標準 SMPL .pkl (poses, betas, trans, gender)
+Usage:
+    python converters/joints_24j_to_smpl.py <input_24j.npy> [--output <output_smpl.pkl>] [--model smpl] [--vis]
 
-用法:
-    python converters/joints_24j_to_smpl.py data/smpl_joints/samples_24j/some_motion.npy
-    python converters/joints_24j_to_smpl.py input.npy --output output.pkl --model smpl
+Technical Details & Data Sources:
+    - Input: 3D Joint coordinates (24 joints, Shape: T, 24, 3) in Y-up.
+    - Optimization fitting: Formulates and solves SMPL/SMPL-H parameter regression using EasyMocap fitting engine.
+    - Source: EasyMocap (https://github.com/zju3dv/EasyMocap)
 """
 import os
 import sys

@@ -1,3 +1,15 @@
+"""
+AMASS to Standard SMPL 72D .pkl Converter
+
+Usage:
+    python converters/amass_to_smpl.py <input_amass.npz> [--output <output_smpl.pkl>] [--fps 20] [--vis]
+
+Technical Details & Data Sources:
+    - Input: AMASS Dataset .npz file (Z-up, SMPL/SMPL-H compatible).
+    - Dimension extraction: Slices first 72 values of pose (global_orient + 23 joints) and first 10 values of betas.
+    - Coordinate conversion: Calls convert_smpl_z_to_y to project from Z-up coordinate system to standard Y-up.
+    - Source: AMASS Dataset (https://amass.is.tue.mpg.de/)
+"""
 import os
 import numpy as np
 import argparse

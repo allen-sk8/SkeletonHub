@@ -1,3 +1,14 @@
+"""
+SMPL-H 52-Joint to SMPL-H Parameter Optimizer Converter (EasyMocap L2 Fitter)
+
+Usage:
+    python converters/joints_52j_to_smplh.py <input_52j.npy> [--output <output_smplh.pkl>] [--gender neutral] [--iters 1000] [--vis]
+
+Technical Details & Data Sources:
+    - Input: 3D Joint coordinates (52 joints, Shape: T, 52, 3) in Y-up.
+    - Optimization fitting: Reconstructs 156D full body and hand finger pose parameters through Adam optimization using custom SMPLHandler.
+    - Source: SMPL-H Model (https://mano.is.tue.mpg.de/)
+"""
 import os
 import sys
 import torch

@@ -1,3 +1,15 @@
+"""
+HybrIK 3D Joints Extractor (HybrIK .pk To 24-Joint 3D Coordinates)
+
+Usage:
+    python converters/HybrIK_to_joints_24j.py <input.pk> [--output <output_24j.npy>] [--scale 2.2] [--vis]
+
+Technical Details & Data Sources:
+    - Input: Prediction results (.pk/.pkl) output by HybrIK model containing keypoints.
+    - Scale restoration: Multiplies coordinates by default bounding box scale 2.2m to restore physical scale.
+    - Coordinate conversion: Flips Y and Z to convert from Y-down (camera space) to standard Y-up (world space).
+    - Source: HybrIK Project (https://github.com/leofansq/HybrIK)
+"""
 import os
 import pickle
 import numpy as np

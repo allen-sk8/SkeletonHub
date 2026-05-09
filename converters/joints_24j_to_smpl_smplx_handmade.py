@@ -1,13 +1,13 @@
 """
-24 Joint XYZ → SMPL 參數轉換器
+24-Joint 3D coordinates to Standard SMPL Parameter Converter (Handmade PyTorch IK Solver)
 
-使用自建的 SMPL IK Solver 進行逆向運動學求解。
-輸入：(T, 24, 3) 的 Y-up 公尺制 3D 關節座標
-輸出：標準 SMPL .pkl (poses, betas, trans, gender)
+Usage:
+    python converters/joints_24j_to_smpl_smplx_handmade.py <input_24j.npy> [--output <output_smpl.pkl>] [--gender neutral] [--vis]
 
-用法:
-    python converters/joints_24j_to_smpl.py data/smpl_joints/samples_24j/some_motion.npy
-    python converters/joints_24j_to_smpl.py input.npy --output output.pkl --gender male
+Technical Details & Data Sources:
+    - Input: 3D Joint coordinates (24 joints, Shape: T, 24, 3) in Y-up.
+    - Inverse Kinematics (IK): Fits standard SMPL params using an optimization loop written in PyTorch with anatomical joint rotation limits.
+    - Source: Handcrafted PyTorch Solver (internal project module).
 """
 import os
 import sys

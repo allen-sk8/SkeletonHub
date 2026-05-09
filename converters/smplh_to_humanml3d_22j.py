@@ -1,3 +1,14 @@
+"""
+SMPL-H to HumanML3D 22-Joint Converter
+
+Usage:
+    python converters/smplh_to_humanml3d_22j.py <input_smplh.pkl> [--output <output_22j.npy>] [--vis]
+
+Technical Details & Data Sources:
+    - Input: SMPL-H parameters (.pkl).
+    - Skeletal mapping: Runs forward kinematics to output 52 joints, then slices first 22 joints to match HumanML3D skeleton chain.
+    - Source: HumanML3D Project (https://github.com/GuoAndong/HumanML3D)
+"""
 import os
 import numpy as np
 import argparse

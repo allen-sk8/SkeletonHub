@@ -1,3 +1,14 @@
+"""
+SMPL-H to Standard SMPL 24-Joint Converter
+
+Usage:
+    python converters/smplh_to_smpl_24j.py <input_smplh.pkl> [--output <output_24j.npy>] [--vis]
+
+Technical Details & Data Sources:
+    - Input: SMPL-H parameters (.pkl).
+    - Skeletal mapping: Runs forward kinematics, maps to standard SMPL 24 joints by correctly selecting indices [:22] + [22] (left wrist) + [37] (right wrist) to resolve index offsets due to fingers.
+    - Source: Standard SMPL Topology (https://smpl.is.tue.mpg.de/)
+"""
 import os
 import numpy as np
 import argparse

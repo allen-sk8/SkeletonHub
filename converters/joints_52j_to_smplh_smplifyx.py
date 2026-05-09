@@ -1,3 +1,14 @@
+"""
+SMPL-H 52-Joint to SMPL-H Parameter Optimizer Converter (SMPLify-X 3D + VPoser Body Prior)
+
+Usage:
+    python converters/joints_52j_to_smplh_smplifyx.py <input_52j.npy> [--output <output_smplh.pkl>] [--gender neutral] [--vis]
+
+Technical Details & Data Sources:
+    - Input: 3D Joint coordinates (52 joints, Shape: T, 52, 3) in Y-up.
+    - Optimization fitting: Implements SMPLify-X optimization pipeline leveraging an embedded PyTorch VPoser v1.0 latent prior networks to enforce biological joint posture constraints.
+    - Source: SMPLify-X (https://github.com/vchoutas/smplify-x) and VPoser (https://github.com/nghorbani/vposer)
+"""
 import os
 import sys
 import torch

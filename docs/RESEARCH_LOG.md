@@ -105,6 +105,44 @@
     2.  若 `neutral` 缺失，自動按順序嘗試 `female` -> `male`。
     3.  支援 `.npz` 格式作為備選，確保在不同版本模型庫間的相容性。
 
+## 🟢 [2026-05-09] 轉換器規格升級：自動命名、自動視覺化與 Standard SMPL 鏈結
+
+本專案於今日完成全面重構，大幅提昇了多級轉換（Multi-stage conversion）的防錯能力與操作體驗，並延伸支援了標準 SMPL 生態圈。
+
+### 1. 📂 自動後綴追加系統 (Auto-Suffixing & History Preservation)
+*   **痛點**：舊版轉換器若不指定輸出檔名，會採用預設檔名覆蓋或單一替換，導致一個檔案經歷多步轉換後（如 AMASS ➔ SMPL-H ➔ BODY25），檔名遺失了轉換歷史，容易混淆。
+*   **解決方案**：
+    *   全專案 16 個轉換器全面重構：當未提供 `--output` 參數時，自動提取輸入路徑的主檔名（Basename），並在尾端追加對應的轉換標記（如 `_smplh`、`_smpl`、`_body25`、`_22j` 等）。
+    *   **轉換鏈實證**：`walking_01_poses.npz` ➔ `amass_to_smplh.py` ➔ `walking_01_poses_smplh.pkl` ➔ `smplh_to_body_25j.py` ➔ `walking_01_poses_smplh_body25.npy`。
+    *   **效益**：檔名自然形成了一條可視化的「資料系譜圖（Genealogy）」，極大地方便了動力學研究中的數據回溯與比對。
+
+### 2. 🎬 一鍵自動視覺化開關 (`--vis` 參數)
+*   **機制**：為了減少使用者手動調用視覺化工具的次數，每個轉換器的命令列參數均新增了 `--vis` 布林開關。
+*   **實現**：在各轉換器寫檔（`.pkl` / `.npy`）完畢後，若啟用 `--vis`，便會自動透過 Python `subprocess` 以對應的 python 解譯器調用特定的視覺化入口程式（如 `vis_smplh_mesh.py`、`vis_smpl_mesh.py`、`vis_body25_joints.py` 或 `vis_smpl_joints.py`）。
+*   **自動對應機制**：
+    *   SMPL-H Mesh 類轉換 ➔ `vis_smplh_mesh.py`
+    *   SMPL Mesh 類轉換 ➔ `vis_smpl_mesh.py`
+    *   BODY25 骨架類轉換 ➔ `vis_body25_joints.py`
+    *   其餘關節數（22j/24j/52j） ➔ `vis_smpl_joints.py`
+
+### 3. 📐 標準 SMPL (72D) 流水線之建立與物理對齊
+隨著動力學生態圈的需求，本專案新增了對標準 SMPL (Standard SMPL, 24 joints) 格式的端到端支援，並釐清了核心物理細節：
+
+#### A. AMASS to Standard SMPL (`amass_to_smpl.py`)
+*   **參數裁切**：
+    *   SMPL 姿勢參數限制在 **72維**（1個根旋轉 + 23個全身主要關節旋轉，無手部與面部指節）。
+    *   體型參數 `betas` 裁切至標準的 **10維**。
+*   **全域座標對齊**：調用 `convert_smpl_z_to_y` 將 AMASS (Z-up) 自動投影至專案標準的 Y-up 空間。
+
+#### B. 頂點回歸至 BODY25 (`smpl_to_body_25j.py` 與 `smplh_to_body_25j.py`)
+*   **原理與拓樸一致性 (Topology Invariance)**：
+    *   為什麼同一個 `J_regressor_body25.npy` 矩陣能同時相容 SMPL (72D) 與 SMPL-H (156D)？
+    *   **技術本質**：不管是標準 SMPL 還是 SMPL-H 模型，兩者在解碼生成人體 Mesh 時，其拓樸（Mesh Topology）完全相同，皆包含 **6,890個頂點 (Vertices)**。
+    *   因此，`J_regressor_body25` 作為一個大小為 `(25, 6890)` 的線性乘積矩陣（其物理意義為對 6,890 個頂點的 3D 座標進行加權平均，以回歸出 25 個關節的位置），可以**毫無隔閡地通用於兩者**。
+*   **座標重複變換之修正**：
+    *   **修正要點**：在 `smpl_to_body_25j.py` 與 `smplh_to_body_25j.py` 中，**完全移除了**二次 Y-Z 的坐標變換。
+    *   **科學依據**：因為在 AMASS 轉換層（`amass_to_smpl` / `amass_to_smplh`）中，模型參數便已經被轉換為標準 Y-up 全域座標。因此，當 `SMPLHandler` 調用正向運動學解算出 3D 頂點時，這些頂點已經處於正確的 Y-up 空間，直接與 `J_regressor_body25` 相乘回歸出的 3D 關節自然也就是完美的 Y-up。若在此處多此一舉進行 `convert_joints_z_to_y`，反而會造成二次變換而導致方向錯誤。
+
 ---
 *文件更新人：Antigravity*
-*最後更新：2026-05-02 11:50*
+*最後更新：2026-05-09 23:30*

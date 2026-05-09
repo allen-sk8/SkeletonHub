@@ -1,3 +1,14 @@
+"""
+HumanML3D 263D to 22j Joint Recoverer Converter
+
+Usage:
+    python converters/humanml3d_263d_to_humanml3d_22j.py <input_263d.npy> [--output <output_22j.npy>] [--vis]
+
+Technical Details & Data Sources:
+    - Input: 263D HumanML3D feature vector (Shape: T, 263).
+    - Recover logic: Integrates velocities and projects joint offsets back to global 3D joints (22 joints, Shape: T, 22, 3).
+    - Source: HumanML3D Project (https://github.com/GuoAndong/HumanML3D)
+"""
 import numpy as np
 import os
 import sys

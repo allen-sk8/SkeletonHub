@@ -1,3 +1,14 @@
+"""
+SMPL-H to SMPL-H 52-Joint Converter
+
+Usage:
+    python converters/smplh_to_smplh_52j.py <input_smplh.pkl> [--output <output_52j.npy>] [--vis]
+
+Technical Details & Data Sources:
+    - Input: SMPL-H parameters (.pkl).
+    - Skeletal mapping: Runs forward kinematics to output full 52 joints (body + hands) of standard SMPL-H skeleton hierarchy.
+    - Source: SMPL-H Model (https://mano.is.tue.mpg.de/)
+"""
 import os
 import numpy as np
 import argparse

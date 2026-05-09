@@ -1,3 +1,15 @@
+"""
+AMASS to SMPL-H 156D .pkl Converter
+
+Usage:
+    python converters/amass_to_smplh.py <input_amass.npz> [--output <output_smplh.pkl>] [--fps 20] [--vis]
+
+Technical Details & Data Sources:
+    - Input: AMASS Dataset .npz file (Z-up, SMPL-H format).
+    - Dimension extraction: Keeps first 156 values of pose to preserve detailed hand finger movements (15 joints per hand).
+    - Coordinate conversion: Calls convert_smpl_z_to_y to project from Z-up coordinate system to standard Y-up.
+    - Source: AMASS Dataset (https://amass.is.tue.mpg.de/)
+"""
 import os
 import numpy as np
 import argparse

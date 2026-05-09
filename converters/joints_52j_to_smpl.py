@@ -1,3 +1,14 @@
+"""
+52-Joint 3D coordinates to SMPL-H Parameter Converter (EasyMocap Optimization)
+
+Usage:
+    python converters/joints_52j_to_smpl.py <input_52j.npy> [--output <output_smplh.pkl>] [--no_hand] [--vis]
+
+Technical Details & Data Sources:
+    - Input: 3D Joint coordinates (52 joints, Shape: T, 52, 3) in Y-up containing fingers.
+    - Optimization fitting: Performs high-fidelity full body and hand fitting back to 156D SMPL-H parameters.
+    - Source: EasyMocap (https://github.com/zju3dv/EasyMocap)
+"""
 import os
 import sys
 import torch
