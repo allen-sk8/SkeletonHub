@@ -20,6 +20,7 @@ graph TD
 
     SMPL_PKL -- smpl_to_humanml3d_22j.py --> JOINTS_22
     SMPL_PKL -- smpl_to_body_25j.py --> BODY_25_S[25j BODY25 OpenPose]
+    SMPL_PKL -- smpl_to_smpl_24j.py --> JOINTS_24
     
     JOINTS_22 -- humanml3d_22j_to_humanml3d_263d.py --> FEAT_263[263D Feature Vector]
     FEAT_263 -- humanml3d_263d_to_humanml3d_22j.py --> JOINTS_22
@@ -80,6 +81,9 @@ python converters/smpl_to_body_25j.py data/smpl/smpl/walking_01_poses_smpl.pkl
 
 # A.3 轉換成 HumanML3D 22 關節
 python converters/smpl_to_humanml3d_22j.py data/smpl/smpl/walking_01_poses_smpl.pkl
+
+# A.4 轉換成標準 SMPL 24 關節 (新增)
+python converters/smpl_to_smpl_24j.py data/smpl/smpl/walking_01_poses_smpl.pkl
 ```
 
 #### 管道 B：數據特徵提取與還原
@@ -141,6 +145,102 @@ pip install -r requirements.txt
 ```bash
 sudo apt-get update
 sudo apt-get install libegl1-mesa-dev libgl1-mesa-dev libosmesa6-dev
+```
+
+---
+
+## 💾 3D 模型與權重下載指南 (3D Models & Weights Setup)
+
+本專案之人體參數模型（SMPL/SMPL-H/SMPL-X）與先驗模型（VPoser）因受官方學術授權限制，權重檔案預設已被排除在專案外。請遵循以下 **Step-by-Step** 指引，手動註冊並下載模型至 **`common_models/`** 目錄中：
+
+### 1. 📂 預期目錄結構 (Target Directory Layout)
+配置完成後，您的 `common_models/` 資料夾應呈現如下樹狀結構：
+```text
+common_models/
+├── body_models/
+│   ├── smpl/
+│   │   ├── SMPL_FEMALE.pkl
+│   │   ├── SMPL_MALE.pkl
+│   │   └── SMPL_NEUTRAL.pkl
+│   ├── smplh/
+│   │   ├── SMPLH_FEMALE.pkl
+│   │   ├── SMPLH_MALE.pkl
+│   │   ├── female/
+│   │   │   └── model.npz
+│   │   ├── male/
+│   │   │   └── model.npz
+│   │   └── neutral/
+│   │       └── model.npz
+│   └── smplx/
+│       ├── female/
+│       │   ├── model.npz
+│       │   └── model.pkl
+│       ├── male/
+│       │   ├── model.npz
+│       │   └── model.pkl
+│       └── neutral/
+│           ├── model.npz
+│           └── model.pkl
+├── vposer_v1_0/
+│   ├── snapshots/
+│   │   └── TR00_E096.pt
+│   ├── TR00_004_00_WO_accad.ini
+│   ├── version.txt
+│   └── vposer_smpl.py
+└── regressor/
+    ├── J_regressor_body25.npy
+    ├── J_regressor_body25_smplh.txt
+    ├── J_regressor_body25_smplx.txt
+    ├── J_regressor_mano_LEFT.txt
+    └── J_regressor_mano_RIGHT.txt
+```
+
+---
+
+### 2. 🛠️ Step-by-Step 下載指引
+
+#### A. 基礎人體模型 SMPL (Standard 24j)
+1. 進入 [MPI SMPL 官方網站](https://smpl.is.tue.mpg.de/) 註冊並登入。
+2. 至 **Downloads** 頁面，下載 **"SMPL Model (Version 1.1.0 for Python 2.7/3)"** (`SMPL_python_v.1.1.0.zip`)。
+3. 解壓後建立 `common_models/body_models/smpl/` 資料夾，並將模型重新命名拷貝進去：
+   * `models/basicModel_neutral_lbs_10_207_0_v1.1.0.pkl` ➔ 命名為 **`SMPL_NEUTRAL.pkl`**
+   * `models/basicModel_f_lbs_10_207_0_v1.1.0.pkl` ➔ 命名為 **`SMPL_FEMALE.pkl`**
+   * `models/basicModel_m_lbs_10_207_0_v1.1.0.pkl` ➔ 命名為 **`SMPL_MALE.pkl`**
+
+#### B. 雙手人體模型 SMPL-H (用于 AMASS 擬合)
+1. 進入 [MANO / SMPL-H 官方網站](https://mano.is.tue.mpg.de/) 註冊並登入。
+2. 至 **Downloads** 頁面，下載 **"SMPLH Model"** (即 `smplh_py_ready_to_load_by_smplx.tar.xz` 版本)。
+3. 解壓後建立 `common_models/body_models/smplh/` 資料夾：
+   * 將 `SMPLH_MALE.pkl` 與 `SMPLH_FEMALE.pkl` 移入 `smplh/` 根目錄下。
+   * 在 `smplh/` 下分別建立 `male/`、`female/`、`neutral/` 三個資料夾。
+   * 將解壓包中的 `model.npz` 分別依據性別，存放為 `male/model.npz`、`female/model.npz`、`neutral/model.npz`。
+
+#### C. 表情全身模型 SMPL-X
+1. 進入 [SMPL-X 官方網站](https://smpl-x.is.tue.mpg.de/) 註冊並登入。
+2. 下載 **"SMPL-X Model"** (通常為 `models_smplx_v1_1.tar.gz` 等適用於 Python 載入的版本)。
+3. 解壓並建立 `common_models/body_models/smplx/` 資料夾，裡面建立 `male/`、`female/`、`neutral/` 三個子資料夾，將對應的 `model.npz` 與 `model.pkl` 分別存入。
+
+#### D. 姿勢先驗模型 VPoser (v1.0)
+1. 前往 [SMPL-X - VPoser 下載頁](https://smpl-x.is.tue.mpg.de/download.php)。
+2. 下載 **"VPoser v1.0"** (`vposer_v1_0.zip`)。
+3. 建立 `common_models/vposer_v1_0/` 資料夾與其子目錄 `snapshots/`：
+   * 將 `TR00_E096.pt` 放進 `vposer_v1_0/snapshots/` 下。
+   * 將 `TR00_004_00_WO_accad.ini`、`vposer_smpl.py` 與 `version.txt` 複製到 `vposer_v1_0/` 根目錄下。
+
+#### E. 關節回歸矩陣 (Regressor) 快速配置
+本專案已包含 `EasyMocap` 做為 Submodule，您可以直接拷貝本地檔案，無須從外部下載。
+
+在專案根目錄下，開啟終端機執行以下拷貝指令：
+```bash
+# 建立目標資料夾
+mkdir -p common_models/regressor
+
+# 複製 BODY25 與手部關節回歸矩陣
+cp external/EasyMocap/data/smplx/J_regressor_body25.npy common_models/regressor/
+cp external/EasyMocap/data/smplx/J_regressor_body25_smplh.txt common_models/regressor/
+cp external/EasyMocap/data/smplx/J_regressor_body25_smplx.txt common_models/regressor/
+cp external/EasyMocap/data/smplx/J_regressor_mano_LEFT.txt common_models/regressor/
+cp external/EasyMocap/data/smplx/J_regressor_mano_RIGHT.txt common_models/regressor/
 ```
 
 ---

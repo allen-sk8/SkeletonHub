@@ -143,6 +143,17 @@
     *   **修正要點**：在 `smpl_to_body_25j.py` 與 `smplh_to_body_25j.py` 中，**完全移除了**二次 Y-Z 的坐標變換。
     *   **科學依據**：因為在 AMASS 轉換層（`amass_to_smpl` / `amass_to_smplh`）中，模型參數便已經被轉換為標準 Y-up 全域座標。因此，當 `SMPLHandler` 調用正向運動學解算出 3D 頂點時，這些頂點已經處於正確的 Y-up 空間，直接與 `J_regressor_body25` 相乘回歸出的 3D 關節自然也就是完美的 Y-up。若在此處多此一舉進行 `convert_joints_z_to_y`，反而會造成二次變換而導致方向錯誤。
 
+#### C. 標準 SMPL 關節提取 (`smpl_to_smpl_24j.py`)
+*   **設計動機**：此轉換器由開發者 Allen 補齊，旨在完整閉合「Standard SMPL (72D) 宇宙」的動力學轉檔鏈。
+*   **實現細節**：將 `.pkl` 格式的 72D SMPL 參數解碼並透過 `SMPLHandler` 正向運動學提取出前 24 個基礎身體關節座標，完美的對準標準 SMPL 骨架。
+
+### 4. 🏷️ 命名規格強烈對齊（Name Symmetry Refinement）
+*   **重構行動**：將原 EasyMocap 擬合器 `joints_52j_to_smpl.py` 正式更名為 **`joints_52j_to_smplh_easymocap.py`**。
+*   **物理依據與防錯**：
+    *   該擬合器實際上解算並回歸的是高階的 **SMPL-H (156維)** 參數，其預設儲存位置也是 `data/smpl/smplh`。
+    *   舊名稱的 `_to_smpl` 尾端非常容易誤導使用者，使其以為這是一個輸出 Standard SMPL (72D) 的擬合器，而丟失了寶貴的手部指節動作。
+    *   更名為 `_to_smplh_easymocap` 後，與 `joints_52j_to_smplh.py` (L2 Fitter) 及 `joints_52j_to_smplh_smplifyx.py` (VPoser Fitter) 形成完美的「手部捕捉擬合三大神器」陣容，消除了所有語意歧義！
+
 ---
 *文件更新人：Antigravity*
-*最後更新：2026-05-09 23:30*
+*最後更新：2026-05-09 23:45*

@@ -6,7 +6,7 @@
 
 ## 1. 施工進度表 (Format Converters)
 
-目前專案已完整實作 16 個核心格式與骨架轉換器，全部均支援**多級後綴串接自動命名**與 **`--vis` 一鍵自動視覺化渲染**：
+目前專案已完整實作 17 個核心格式與骨架轉換器，全部均支援**多級後綴串接自動命名**與 **`--vis` 一鍵自動視覺化渲染**：
 
 | # | 來源格式 | 目標格式 | 轉換腳本 | 進度狀態 | 負責人 | 核心技術與備註 |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -18,14 +18,15 @@
 | 6 | **SMPL-H (.pkl)** | BODY25 (.npy) | `smplh_to_body_25j.py` | ✅ 已完成 | Antigravity | 透過 EasyMocap 回歸矩陣直接由頂點回歸 |
 | 7 | **SMPL (.pkl)** | HumanML3D (22j) | `smpl_to_humanml3d_22j.py` | ✅ 已完成 | Allen / Anti | 標準 24 關節前向動力學 FK 裁切為 22 關節 |
 | 8 | **SMPL (.pkl)** | BODY25 (.npy) | `smpl_to_body_25j.py` | ✅ 已完成 | Antigravity | 標準 SMPL 頂點回歸 BODY25 關節，支持 Y-up |
-| 9 | **Joints (24j)** | SMPL (.pkl) | `joints_24j_to_smpl.py` | ✅ 已完成 | Antigravity | 整合 EasyMocap 優化擬合 (PyTorch L-BFGS) |
-| 10| **Joints (24j)** | SMPL (.pkl) | `joints_24j_to_smpl_smplx_handmade.py` | ✅ 已完成 | Antigravity | 自研 PyTorch 手工解剖極限約束 IK Solver |
-| 11| **Joints (52j)** | SMPL-H (.pkl) | `joints_52j_to_smpl.py` | ✅ 已完成 | Antigravity | 含雙手手指運動捕捉的高精度優化擬合 |
-| 12| **Joints (52j)** | SMPL-H (.pkl) | `joints_52j_to_smplh.py` | ✅ 已完成 | Antigravity | 利用 SMPLHandler 與 L2 Loss 的快速擬合器 |
-| 13| **Joints (52j)** | SMPL-H (.pkl) | `joints_52j_to_smplh_smplifyx.py` | ✅ 已完成| Antigravity | 整合 SMPLify-X 框架與 VPoser 先驗約束 |
-| 14| **HybrIK (.pk)** | Joints (24j) | `HybrIK_to_joints_24j.py` | ✅ 已完成 | Antigravity | 還原 2.2m 物理尺度，Y-down 轉全域 Y-up |
-| 15| **HumanML3D (22j)**| HumanML3D (263D)| `humanml3d_22j_to_humanml3d_263d.py` | ✅ 已完成 | Antigravity | 計算 RIC/Rotation 6D/Velocity/Foot Contacts |
-| 16| **HumanML3D (263D)**| HumanML3D (22j)| `humanml3d_263d_to_humanml3d_22j.py` | ✅ 已完成| Antigravity | 累積 Root 速度、重塑局部偏置反算 3D 座標 |
+| 9 | **SMPL (.pkl)** | SMPL (24j) | `smpl_to_smpl_24j.py` | ✅ 已完成 | Allen | 標準 24 關節前向動力學 FK (body only) |
+| 10 | **Joints (24j)** | SMPL (.pkl) | `joints_24j_to_smpl.py` | ✅ 已完成 | Antigravity | 整合 EasyMocap 優化擬合 (PyTorch L-BFGS) |
+| 11 | **Joints (24j)** | SMPL (.pkl) | `joints_24j_to_smpl_smplx_handmade.py` | ✅ 已完成 | Antigravity | 自研 PyTorch 手工解剖極限約束 IK Solver |
+| 12 | **Joints (52j)** | SMPL-H (.pkl) | `joints_52j_to_smplh_easymocap.py` | ✅ 已完成 | Antigravity | 含雙手手指運動捕捉的高精度優化擬合 (EasyMocap) |
+| 13 | **Joints (52j)** | SMPL-H (.pkl) | `joints_52j_to_smplh.py` | ✅ 已完成 | Antigravity | 利用 SMPLHandler 與 L2 Loss 的快速擬合器 |
+| 14 | **Joints (52j)** | SMPL-H (.pkl) | `joints_52j_to_smplh_smplifyx.py` | ✅ 已完成| Antigravity | 整合 SMPLify-X 框架與 VPoser 先驗約束 |
+| 15 | **HybrIK (.pk)** | Joints (24j) | `HybrIK_to_joints_24j.py` | ✅ 已完成 | Antigravity | 還原 2.2m 物理尺度，Y-down 轉全域 Y-up |
+| 16 | **HumanML3D (22j)**| HumanML3D (263D)| `humanml3d_22j_to_humanml3d_263d.py` | ✅ 已完成 | Antigravity | 計算 RIC/Rotation 6D/Velocity/Foot Contacts |
+| 17 | **HumanML3D (263D)**| HumanML3D (22j)| `humanml3d_263d_to_humanml3d_22j.py` | ✅ 已完成| Antigravity | 累積 Root 速度、重塑局部偏置反算 3D 座標 |
 
 ---
 

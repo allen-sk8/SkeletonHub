@@ -18,5 +18,8 @@ venv/
 !/external/smplify-x
 !/external/human_body_prior
 !/external/EasyMocap
-/common_models/*
-!/common_models/README.md
+/common_models/**
+!/common_models/
+!/common_models/**/
+!/common_models/**/*.md
+!/common_models/**/.gitkeep
