@@ -58,13 +58,21 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="HumanML3D 22j to 263D 轉換器")
     parser.add_argument("input", help="輸入路徑 (.npy, 22j)")
     parser.add_argument("--output", help="輸出路徑 (.npy, 263D)")
+    parser.add_argument("--vis", action="store_true", help="是否自動跑視覺化工具")
     args = parser.parse_args()
     
     output = args.output
     if not output:
         default_dir = "data/humanml3d/samples"
         os.makedirs(default_dir, exist_ok=True)
-        base_name = os.path.basename(args.input)
-        output = os.path.join(default_dir, "263d_" + base_name.replace("22j_", ""))
+        base_name, _ = os.path.splitext(os.path.basename(args.input))
+        output = os.path.join(default_dir, f"{base_name}_263d.npy")
         
     convert_humanml3d_22j_to_humanml3d_263d(args.input, output)
+
+    if args.vis:
+        print("🎬 正在自動執行視覺化工具...")
+        import subprocess
+        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+        vis_script = os.path.join(project_root, "visualizers", "vis_humanml3d.py")
+        subprocess.run([sys.executable, vis_script, output])

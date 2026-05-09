@@ -70,6 +70,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="SMPL-H to SMPL 24j 轉換器")
     parser.add_argument("input", help="輸入的 .pkl 檔案路徑")
     parser.add_argument("--output", help="輸出的 .npy 檔案路徑")
+    parser.add_argument("--vis", action="store_true", help="是否自動跑視覺化工具")
     
     args = parser.parse_args()
     
@@ -77,7 +78,14 @@ if __name__ == "__main__":
     if not output:
         default_dir = "data/smpl_joints/samples_24j"
         os.makedirs(default_dir, exist_ok=True)
-        base_name = os.path.basename(args.input).replace('.pkl', '')
-        output = os.path.join(default_dir, f"24j_{base_name.replace('smplh_', '')}.npy")
+        base_name, _ = os.path.splitext(os.path.basename(args.input))
+        output = os.path.join(default_dir, f"{base_name}_24j.npy")
     
     convert_smplh_to_smpl_24j(args.input, output)
+
+    if args.vis:
+        print("🎬 正在自動執行視覺化工具...")
+        import subprocess
+        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+        vis_script = os.path.join(project_root, "visualizers", "vis_smpl_joints.py")
+        subprocess.run([sys.executable, vis_script, output])

@@ -3,13 +3,14 @@ import numpy as np
 import argparse
 import pickle
 import sys
+
+# 將專案路徑加入以匯入工具
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from utils.axis_converter import convert_smpl_z_to_y
 
-def convert_amass_to_smplh(src_path, save_path, target_fps=20):
+def convert_amass_to_smpl(src_path, save_path, target_fps=20):
     """
-    將 AMASS 的 .npz 檔案轉換為 SkeletonHub 標準的 SMPL-H (156j) .pkl 格式
-    保留完整的手部參數
+    將 AMASS 的 .npz 檔案轉換為 SkeletonHub 標準的 SMPL (72j) .pkl 格式
     """
     if not os.path.exists(src_path):
         print(f"❌ 找不到檔案: {src_path}")
@@ -26,10 +27,11 @@ def convert_amass_to_smplh(src_path, save_path, target_fps=20):
     down_sample = max(1, int(fps / target_fps))
     
     try:
+        # standard SMPL uses first 72 parameters for poses and first 10 for betas
         data = {
-            'poses': bdata['poses'][::down_sample, :156].astype(np.float32),
+            'poses': bdata['poses'][::down_sample, :72].astype(np.float32),
             'trans': bdata['trans'][::down_sample, ...].astype(np.float32),
-            'betas': bdata['betas'][:16].astype(np.float32), 
+            'betas': bdata['betas'][:10].astype(np.float32), 
             'gender': str(bdata.get('gender', 'neutral')),
             'mocap_framerate': fps,
             'target_fps': target_fps,
@@ -52,11 +54,11 @@ def convert_amass_to_smplh(src_path, save_path, target_fps=20):
     with open(save_path, 'wb') as f:
         pickle.dump(data, f)
     
-    print(f"✅ 轉換成功 (SMPL-H 156D): {os.path.basename(src_path)}")
+    print(f"✅ 轉換成功 (SMPL 72D): {os.path.basename(src_path)}")
     print(f"   - 儲存路徑: {save_path}")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="AMASS .npz to SMPL-H (156D) .pkl 轉換器")
+    parser = argparse.ArgumentParser(description="AMASS .npz to SMPL (72D) .pkl 轉換器")
     parser.add_argument("input", help="輸入的 AMASS .npz 路徑")
     parser.add_argument("--output", help="輸出的 .pkl 路徑")
     parser.add_argument("--fps", type=int, default=20, help="目標影格率")
@@ -66,16 +68,16 @@ if __name__ == "__main__":
     
     output = args.output
     if not output:
-        default_dir = os.path.join(os.getcwd(), "data", "smpl", "smplh")
+        default_dir = os.path.join(os.getcwd(), "data", "smpl", "smpl")
         os.makedirs(default_dir, exist_ok=True)
         base_name, _ = os.path.splitext(os.path.basename(args.input))
-        output = os.path.join(default_dir, f"{base_name}_smplh.pkl")
+        output = os.path.join(default_dir, f"{base_name}_smpl.pkl")
     
-    convert_amass_to_smplh(args.input, output, target_fps=args.fps)
-
+    convert_amass_to_smpl(args.input, output, target_fps=args.fps)
+    
     if args.vis:
         print("🎬 正在自動執行視覺化工具...")
         import subprocess
         project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-        vis_script = os.path.join(project_root, "visualizers", "vis_smplh_mesh.py")
+        vis_script = os.path.join(project_root, "visualizers", "vis_smpl_mesh.py")
         subprocess.run([sys.executable, vis_script, output])

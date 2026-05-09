@@ -159,20 +159,38 @@ class SMPLifyX3DWrapper:
         }
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("input")
-    parser.add_argument("--gender", default='neutral')
-    parser.add_argument("--output")
+    parser = argparse.ArgumentParser(description="SMPLify-X 3D 擬合轉換器 (52j to SMPL-H)")
+    parser.add_argument("input", help="輸入的 .npy 關節路徑 (T, 52, 3)")
+    parser.add_argument("--gender", default='neutral', choices=['male', 'female', 'neutral'])
+    parser.add_argument("--output", help="輸出 .pkl 路徑")
+    parser.add_argument("--vis", action="store_true", help="是否自動跑視覺化工具")
     args = parser.parse_args()
+
+    if not os.path.exists(args.input):
+        print(f"❌ 找不到檔案: {args.input}")
+        return
 
     data = np.load(args.input)
     wrapper = SMPLifyX3DWrapper()
     res = wrapper.fit(data, gender=args.gender)
     
-    out = args.output or args.input.replace('.npy', '_smplifyx.pkl')
+    out = args.output
+    if not out:
+        default_dir = "data/smpl/smplh"
+        os.makedirs(default_dir, exist_ok=True)
+        base_name, _ = os.path.splitext(os.path.basename(args.input))
+        out = os.path.join(default_dir, f"{base_name}_smplh.pkl")
+        
     with open(out, 'wb') as f:
         pickle.dump(res, f)
     print(f"✅ Saved to {out}")
+
+    if args.vis:
+        print("🎬 正在自動執行視覺化工具...")
+        import subprocess
+        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+        vis_script = os.path.join(project_root, "visualizers", "vis_smplh_mesh.py")
+        subprocess.run([sys.executable, vis_script, out])
 
 if __name__ == "__main__":
     main()

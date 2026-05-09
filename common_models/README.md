@@ -48,6 +48,14 @@
     vposer_v1_0/
     ```
 
+### E. regressor
+*   **來源**: [EasyMocap GitHub](https://github.com/zju3dv/EasyMocap) 
+*   **原始路徑**:/home/allen/SkeletonHub/external/EasyMocap/data/smplx 
+*   **存放路徑**:
+    ```text
+    regressor/
+    ```
+
 ## 2. 代碼調用規範
 在專案中使用 `utils/smpl_handler.py` 進行調用，該工具會自動根據 `model_type` 前往對應資料夾加載：
 

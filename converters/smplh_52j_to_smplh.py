@@ -135,6 +135,7 @@ def main():
     parser.add_argument("--gender", choices=['male', 'female', 'neutral'], default='neutral')
     parser.add_argument("--iters", type=int, default=1000, help="最終階段優化疊代次數")
     parser.add_argument("--output", help="輸出 .pkl 路徑")
+    parser.add_argument("--vis", action="store_true", help="是否自動跑視覺化工具")
     
     args = parser.parse_args()
     
@@ -156,12 +157,20 @@ def main():
     output_path = args.output
     if not output_path:
         os.makedirs("data/smpl/smplh", exist_ok=True)
-        output_path = os.path.join("data/smpl/smplh", os.path.basename(args.input).replace('.npy', '_52j_fitted.pkl'))
+        base_name, _ = os.path.splitext(os.path.basename(args.input))
+        output_path = os.path.join("data/smpl/smplh", f"{base_name}_smplh.pkl")
         
     with open(output_path, 'wb') as f:
         pickle.dump(result, f)
         
     print(f"✅ 擬合完成！結果已儲存至: {output_path}")
+
+    if args.vis:
+        print("🎬 正在自動執行視覺化工具...")
+        import subprocess
+        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+        vis_script = os.path.join(project_root, "visualizers", "vis_smplh_mesh.py")
+        subprocess.run([sys.executable, vis_script, output_path])
 
 if __name__ == "__main__":
     main()

@@ -25,6 +25,7 @@ def main():
     parser.add_argument("--output", help="輸出的 .pkl 檔案路徑")
     parser.add_argument("--gender", default="neutral", choices=["male", "female", "neutral"],
                         help="SMPL 性別 (預設: neutral)")
+    parser.add_argument("--vis", action="store_true", help="是否自動跑視覺化工具")
     
     args = parser.parse_args()
     
@@ -50,13 +51,20 @@ def main():
     out_path = args.output
     if not out_path:
         os.makedirs("data/smpl/smpl", exist_ok=True)
-        filename = os.path.basename(args.input).replace('.npy', '_fitted_smpl.pkl')
-        out_path = os.path.join("data/smpl/smpl", filename)
+        base_name, _ = os.path.splitext(os.path.basename(args.input))
+        out_path = os.path.join("data/smpl/smpl", f"{base_name}_smpl.pkl")
         
     with open(out_path, 'wb') as f:
         pickle.dump(result, f)
         
     print(f"✅ Fitting complete! Result saved to: {out_path}")
+
+    if args.vis:
+        print("🎬 正在自動執行視覺化工具...")
+        import subprocess
+        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+        vis_script = os.path.join(project_root, "visualizers", "vis_smpl_mesh.py")
+        subprocess.run([sys.executable, vis_script, out_path])
 
 if __name__ == "__main__":
     main()
