@@ -98,6 +98,53 @@ python inspector.py data/body25/walking_01_poses_smpl_body25.npy
 
 ---
 
+## 📦 環境建置與打包說明 (Environment Setup & Package Details)
+
+本專案使用 `conda` 的 **`skeleton_env`** 作為執行與運算環境（Python 3.10）。
+
+專案根目錄下已打包完整的環境設定檔：
+*   **[environment.yml](file:///home/allen/SkeletonHub/environment.yml)**：Conda 統一環境建置檔。
+*   **[requirements.txt](file:///home/allen/SkeletonHub/requirements.txt)**：Pip 依賴套件明細。
+
+### 1. 核心依賴套件明細 (Key Dependencies)
+*   **深度學習底座**：PyTorch 2.0.1 (CUDA 11.7)
+*   **3D 圖學與人體模型**：PyTorch3D 0.7.8、SMPL-X 0.1.28
+*   **3D 視覺化與渲染**：Pyrender 0.1.45 (EGL Headless 支援)、Trimesh 3.10.5、OpenCV-Python、Matplotlib
+*   **資料與特徵處理**：NumPy 1.26.4、SciPy 1.7.2、Pandas 1.4.1
+*   **模型配置與日誌**：Hydra-Core 1.3.2、OmegaConf 2.3.0、Loguru
+
+### 2. 快速建立與啟動環境 (Quick Start)
+
+#### ⚡ 管道 A：使用 Conda 描述檔一鍵還原 (推薦)
+```bash
+# 從 environment.yml 建立 skeleton_env
+conda env create -f environment.yml
+
+# 啟用環境
+conda activate skeleton_env
+```
+
+#### 🛠 管道 B：手動建立並透過 pip 安裝
+```bash
+# 建立 Python 3.10 乾淨環境
+conda create -n skeleton_env python=3.10 -y
+conda activate skeleton_env
+
+# 透過打包好的 requirements.txt 安裝依賴
+pip install -r requirements.txt
+```
+
+### 3. Linux 伺服器無頭渲染配置 (Headless Offscreen Rendering)
+專案內建的 3D 影片渲染引擎（例如 `--vis` 參數呼叫的 `MeshRenderer`）預設使用 **EGL Offscreen Rendering** 進行離線 GPU 渲染。
+
+若您在 **Linux 遠端無 GUI 伺服器** 上執行時發生 OpenGL 錯誤，請確保伺服器已安裝以下 Mesa 系統庫：
+```bash
+sudo apt-get update
+sudo apt-get install libegl1-mesa-dev libgl1-mesa-dev libosmesa6-dev
+```
+
+---
+
 ## 📜 實作參考與致謝 (Acknowledgments)
 本專案的物理、數學與優化邏輯參考並移植自以下優秀開源專案：
 *   **HumanML3D**: [Guo et al. 2022] 提供特徵提取與 RIC 還原流水線。
