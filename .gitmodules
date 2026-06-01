@@ -7,3 +7,6 @@
 [submodule "external/EasyMocap"]
 	path = external/EasyMocap
 	url = https://github.com/zju3dv/EasyMocap.git
+[submodule "external/mmpose"]
+	path = external/mmpose
+	url = https://github.com/open-mmlab/mmpose.git

@@ -155,5 +155,28 @@
     *   更名為 `_to_smplh_easymocap` 後，與 `joints_52j_to_smplh.py` (L2 Fitter) 及 `joints_52j_to_smplh_smplifyx.py` (VPoser Fitter) 形成完美的「手部捕捉擬合三大神器」陣容，消除了所有語意歧義！
 
 ---
+
+## 🟢 [2026-06-02] RTMPose3D 整合與 COCO-Wholebody 133 轉 BODY25 實作
+
+### 1. 偵測器整合 (RTMPose3D Inference Wrapper)
+*   **指令腳本**：`detectors/rtmpose3d_detector.py`。
+*   **工作原理**：
+    1. 使用 RTMDet 偵測影片中的人物。
+    2. 對畫面中最大 Bounding Box 的人進行 RTMW3D-X 三維全域人體姿態預測。
+    3. 獲取原生的 COCO-Wholebody 133 個 3D 關節點。
+*   **物理與座標對齊**：
+    * 原始 RTMPose3D 模型預測結果以公尺為單位，並使用 Z-up 座標系。
+    * 在偵測器內部，我們直接調用 `utils/axis_converter.py` 中的 `convert_joints_z_to_y` 對預測結果進行 Y-up 座標投影，並將輸出儲存至 `data/coco_wholebody133/`，副檔名後綴為 `_coco_wholebody133.npy`。
+
+### 2. 格式轉換器實作 (COCO-Wholebody 133 to BODY25)
+*   **指令腳本**：`converters/joints_133j_to_body_25j.py`。
+*   **對應邏輯**：
+    * **直接映射**：對應 Nose、雙肩、雙肘、雙腕、雙髖、雙膝、雙踝、雙眼、雙耳及足底（大腳趾、小腳趾、腳跟）等共通的 23 個關節點。
+    * **插值解算**：
+        * **Neck (BODY25 index 1)** = $\frac{\text{LShoulder} + \text{RShoulder}}{2}$
+        * **MidHip (BODY25 index 8)** = $\frac{\text{LHip} + \text{RHip}}{2}$
+*   **視覺化整合**：支援自動剥離後綴（`_coco_wholebody133` 或 `_joints133`）與 `--vis` 參數，以便在轉檔後自動呼叫 `vis_body25_joints.py` 繪製標準 Y-up 骨架影片。
+
+---
 *文件更新人：Antigravity*
-*最後更新：2026-05-09 23:45*
+*最後更新：2026-06-02 05:00*

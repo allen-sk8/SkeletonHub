@@ -27,6 +27,7 @@
 | 15 | **HybrIK (.pk)** | Joints (24j) | `HybrIK_to_joints_24j.py` | ✅ 已完成 | Antigravity | 還原 2.2m 物理尺度，Y-down 轉全域 Y-up |
 | 16 | **HumanML3D (22j)**| HumanML3D (263D)| `humanml3d_22j_to_humanml3d_263d.py` | ✅ 已完成 | Antigravity | 計算 RIC/Rotation 6D/Velocity/Foot Contacts |
 | 17 | **HumanML3D (263D)**| HumanML3D (22j)| `humanml3d_263d_to_humanml3d_22j.py` | ✅ 已完成| Antigravity | 累積 Root 速度、重塑局部偏置反算 3D 座標 |
+| 18 | **COCO-Wholebody (133j)** | BODY25 (.npy) | `joints_133j_to_body_25j.py` | ✅ 已完成 | Antigravity | 透過對應與插值 Neck/MidHip，支援影片一鍵自動視覺化 |
 
 ---
 
@@ -56,5 +57,13 @@
 | **SMPL-H Mesh (156D)**| `python visualizers/vis_smplh_mesh.py <file>` | Pyrender + SMPL-H (含手部) 模型 FK 渲染 | `data/smpl/smplh/visualizations/` |
 
 ---
-*最後更新時間：2026-05-09*
+
+## 4. 骨架偵測器與工具 (Detectors & Extractors)
+
+| # | 工具名稱 | 輸出格式 | 腳本路徑 | 進度狀態 | 負責人 | 核心技術與備註 |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| 1 | **RTMPose3D** | COCO-Wholebody (133j) | `detectors/rtmpose3d_detector.py` | ✅ 已完成 | Antigravity | 使用 RTMW3D-X 進行 3D 姿態提取，座標自動校正為 Y-up 公尺 |
+
+---
+*最後更新時間：2026-06-02*
 *維護人：Antigravity*
