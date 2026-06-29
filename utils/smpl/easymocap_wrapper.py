@@ -25,8 +25,9 @@ class SMPLModelWrapper(torch.nn.Module):
         self.init_params = model.init_params
     
     def forward(self, *args, **kwargs):
-        # Force return_smpl_joints=True to include the joints we want to fit
-        kwargs['return_smpl_joints'] = True
+        # return_smpl_joints=False so EasyMocap returns the regressed BODY25 joints
+        # (not the 24 internal SMPL joints which have a different ordering)
+        kwargs.setdefault('return_smpl_joints', False)
         return self.model(*args, **kwargs)
 
     def __getattr__(self, name):
@@ -39,9 +40,10 @@ class EasyMocapWrapper:
     A wrapper for EasyMocap to provide a clean API for SMPL fitting.
     Follows SkeletonHub standards: Y-up, meters, Right-handed.
     """
-    def __init__(self, model_root="common_models/body_models", model_type="smplh", device=None):
+    def __init__(self, model_root="common_models/body_models", model_type="smplh", device=None, skel_type="body25"):
         self.device = device if device else torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model_type = model_type
+        self.skel_type = skel_type
         
         # Determine model path
         # Default to MALE if neutral is missing (standard for SMPL-H)
@@ -60,10 +62,35 @@ class EasyMocapWrapper:
         
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"❌ [EasyMocapWrapper] SMPL model not found at {model_path}")
+        
+        # Determine regressor path for the target skeleton type
+        # This is CRITICAL: without the regressor, EasyMocap only knows SMPL's 24
+        # internal joints, which have a completely different ordering than BODY25.
+        regressor_path = None
+        if skel_type == 'body25':
+            # Try standard SkeletonHub path first, then EasyMocap fallback
+            candidates = [
+                os.path.join(model_root, '..', 'regressor', 'J_regressor_body25.npy'),
+                os.path.join(os.path.dirname(__file__), '..', '..', 'common_models', 'regressor', 'J_regressor_body25.npy'),
+                os.path.join(os.path.dirname(__file__), '..', '..', 'external', 'EasyMocap', 'data', 'smplx', 'J_regressor_body25.npy'),
+            ]
+            for cand in candidates:
+                cand = os.path.abspath(cand)
+                if os.path.exists(cand):
+                    regressor_path = cand
+                    break
+            if regressor_path is None:
+                raise FileNotFoundError(
+                    f"❌ [EasyMocapWrapper] J_regressor_body25.npy not found. "
+                    f"Searched: {[os.path.abspath(c) for c in candidates]}"
+                )
+            print(f"📐 [EasyMocapWrapper] Using BODY25 regressor: {regressor_path}")
             
-        print(f"🚀 [EasyMocapWrapper] Loading {model_type} from {model_path}")
-        # Note: EasyMocap's SMPLModel handles its own loading
-        raw_model = SMPLModel(model_path, device=self.device, model_type=model_type)
+        print(f"🚀 [EasyMocapWrapper] Loading {model_type} ({skel_type}) from {model_path}")
+        # Note: regressor_path is required so EasyMocap can regress BODY25 joints
+        # from mesh vertices. Without it, the model only outputs SMPL's 24 internal
+        # joints which have a completely different ordering than BODY25.
+        raw_model = SMPLModel(model_path, regressor_path=regressor_path, device=self.device, model_type=model_type)
         self.body_model = SMPLModelWrapper(raw_model)
         
         # Default config for EasyMocap fitting

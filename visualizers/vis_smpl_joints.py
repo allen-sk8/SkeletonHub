@@ -25,8 +25,18 @@ SMPL_H_52_CHAIN = [
 ]
 SMPL_H_52_COLORS = ['red', 'blue', 'black', 'red', 'blue'] + ['red']*5 + ['blue']*5
 
+# 4. Human3.6M (17 Joints)
+H36M_17_CHAIN = [
+    [0, 1, 2, 3],         # Left leg
+    [0, 4, 5, 6],         # Right leg
+    [0, 7, 8, 9, 10],     # Spine & Head
+    [8, 11, 12, 13],      # Left arm
+    [8, 14, 15, 16]       # Right arm
+]
+H36M_17_COLORS = ['blue', 'red', 'black', 'blue', 'red']
+
 def main():
-    parser = argparse.ArgumentParser(description="SMPL 家族關節座標視覺化程式 (支援 22j, 24j, 52j)")
+    parser = argparse.ArgumentParser(description="SMPL 家族關節座標視覺化程式 (支援 17j, 22j, 24j, 52j)")
     parser.add_argument("input", help="輸入的 .npy (T, J, 3) 檔案路徑")
     parser.add_argument("--fps", type=int, default=20, help="幀率")
     parser.add_argument("--radius", type=float, default=3.0, help="渲染半徑 (建議 3.0)")
@@ -40,7 +50,10 @@ def main():
     print(f"📊 偵測到數據維度: {data.shape} (Frames: {T}, Joints: {J})")
 
     # 2. 自動匹配骨架配置 (🌟 預設匹配將導向對應定義)
-    if J == 22:
+    if J == 17:
+        print("🔗 匹配成功: Human3.6M (17 joints)")
+        chain, colors = H36M_17_CHAIN, H36M_17_COLORS
+    elif J == 22:
         print("🔗 匹配成功: HumanML3D (22 joints)")
         chain, colors = H3D_22_CHAIN, H3D_22_COLORS
     elif J == 24:

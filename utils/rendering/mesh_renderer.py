@@ -35,7 +35,7 @@ class MeshRenderer:
         axis_mesh = trimesh.creation.axis(origin_size=0.01, axis_radius=0.005, axis_length=length, transform=transform)
         return pyrender.Mesh.from_trimesh(axis_mesh, smooth=False)
 
-    def render_motion(self, vertices, faces, save_path, fps=20, title="SMPL Mesh", axis_length=0.2):
+    def render_motion(self, vertices, faces, save_path, fps=20, title="SMPL Mesh", axis_length=0.2, draw_axes=True, draw_text=True, mesh_color=[0.2, 0.5, 0.8, 1.0]):
         T = vertices.shape[0]
         
         # 🌟 計算人物中心點，避免相機拍空
@@ -50,7 +50,8 @@ class MeshRenderer:
         
         # 加入在地心位置的地平面與座標軸
         scene.add(self._create_ground_plane(center_x=center[0], center_z=center[2], floor_y=floor_y))
-        scene.add(self._create_axes(origin=[0, 0, 0], length=axis_length))
+        if draw_axes:
+            scene.add(self._create_axes(origin=[0, 0, 0], length=axis_length))
         
         # 🌟 動態設定相機位置，指向人物中心
         # camera_pos: [左右偏移, 高度, 前後距離]
@@ -86,7 +87,7 @@ class MeshRenderer:
             mesh = trimesh.Trimesh(vertices=vertices[t], faces=faces, process=False)
             material = pyrender.MetallicRoughnessMaterial(
                 metallicFactor=0.2, roughnessFactor=0.8,
-                baseColorFactor=[0.2, 0.5, 0.8, 1.0] # 深天藍色
+                baseColorFactor=mesh_color
             )
             mesh_node = pyrender.Mesh.from_trimesh(mesh, material=material)
             node = scene.add(mesh_node)
@@ -95,10 +96,11 @@ class MeshRenderer:
             color, _ = r.render(scene)
             color = color.copy()
             
-            # 加入 XYZ 標示 (在左上角)
-            cv2.putText(color, "X (Red)", (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
-            cv2.putText(color, "Y (Green)", (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-            cv2.putText(color, "Z (Blue)", (20, 120), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+            if draw_text:
+                # 加入 XYZ 標示 (在左上角)
+                cv2.putText(color, "X (Red)", (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+                cv2.putText(color, "Y (Green)", (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                cv2.putText(color, "Z (Blue)", (20, 120), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
             
             vw.write(cv2.cvtColor(color, cv2.COLOR_RGB2BGR))
             

@@ -10,3 +10,6 @@
 [submodule "external/mmpose"]
 	path = external/mmpose
 	url = https://github.com/open-mmlab/mmpose.git
+[submodule "external/Hybrik"]
+	path = external/Hybrik
+	url = git@github.com:MotionXperts/HybrIK.git

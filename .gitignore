@@ -1,5 +1,6 @@
 # Data and Models
 *.pth
+model_files/
 
 # Python
 __pycache__/
@@ -19,6 +20,7 @@ venv/
 !/external/human_body_prior
 !/external/EasyMocap
 !/external/mmpose
+!/external/Hybrik
 /common_models/**
 !/common_models/
 !/common_models/**/

@@ -52,7 +52,7 @@
 | :--- | :--- | :--- | :--- |
 | **HumanML3D (263D)** | `python visualizers/vis_humanml3d.py <file>` | 經由 22j 特徵還原器 + Matplotlib 骨架渲染 | `data/humanml3d/samples/visualizations/` |
 | **OpenPose (BODY25)** | `python visualizers/vis_body25_joints.py <file>`| Matplotlib 25 關節拓樸渲染 (標準 Y-up) | `data/body25/visualizations/` |
-| **Standard Joints** | `python visualizers/vis_smpl_joints.py <file>` | Matplotlib 自動匹配 22j / 24j / 52j 骨架連線 | `data/smpl_joints/samples_Xj/visualizations/` |
+| **Standard Joints** | `python visualizers/vis_smpl_joints.py <file>` | Matplotlib 自動匹配 17j / 22j / 24j / 52j 骨架連線 | `data/smpl_joints/samples_Xj/visualizations/` (H36M17 存於 `data/h36m17/visualizations/`) |
 | **SMPL Mesh (72D)** | `python visualizers/vis_smpl_mesh.py <file>` | Pyrender + Standard SMPL 模型 FK 渲染 | `data/smpl/smpl/visualizations/` |
 | **SMPL-H Mesh (156D)**| `python visualizers/vis_smplh_mesh.py <file>` | Pyrender + SMPL-H (含手部) 模型 FK 渲染 | `data/smpl/smplh/visualizations/` |
 
@@ -63,7 +63,8 @@
 | # | 工具名稱 | 輸出格式 | 腳本路徑 | 進度狀態 | 負責人 | 核心技術與備註 |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | 1 | **RTMPose3D** | COCO-Wholebody (133j) | `detectors/rtmpose3d_detector.py` | ✅ 已完成 | Antigravity | 使用 RTMW3D-X 進行 3D 姿態提取，座標自動校正為 Y-up 公尺 |
+| 2 | **HybrIK** | SMPL (24j), BODY25 (.npy) & H36M17 (.npy) | `detectors/hybrik_detector.py` | ✅ 已完成 | Antigravity | 整合 SMPL24、BODY25 與 H36M17 偵測，支援格式選擇（預設 'all'）、3D 視覺化與貼回影片（骨架/SMPL Mesh）雙重覆載渲染 |
 
 ---
-*最後更新時間：2026-06-02*
+*最後更新時間：2026-06-30 01:18*
 *維護人：Antigravity*
