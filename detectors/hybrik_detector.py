@@ -484,6 +484,12 @@ class HybrikDetector:
                     joints_17[..., 1] *= -1
                     joints_17[..., 2] *= -1
                     
+                    # Centering X and Z around first frame's pelvis (Pelvis, joint 0)
+                    orig_pelvis_x = float(joints_17[0, 0, 0])
+                    orig_pelvis_z = float(joints_17[0, 0, 2])
+                    joints_17[..., 0] -= orig_pelvis_x
+                    joints_17[..., 2] -= orig_pelvis_z
+                    
                     # Apply rebasing/grounding if enabled
                     if rebase:
                         # Grounding: Offset Y so the lowest joint of frame 0 is at Y = 0
