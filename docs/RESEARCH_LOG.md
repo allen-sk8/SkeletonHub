@@ -267,5 +267,38 @@
     -   對於下游的 SMPL 24j 世界坐標系表示，我們只需要標準的 24 個關節，因此在提取時，我們只切片取前 24 個通道：`pred_xyz_29[:, :24, :]`，即可完美對齊標準 SMPL 24 關節順序。
 
 ---
+
+## 🟢 [2026-07-15] GVHMR (Global-grounded Video HMR) 偵測器管線整合
+
+### 1. 座標系與投影規格 (Coordinate Space & Projection)
+*   **全域世界座標系 (Global Space)**：
+    -   GVHMR 原生預測的 `smpl_params_global` 經由 SMPL 運算重建後的 3D 頂點與關節座標已是 **右手系 Y-up** 且以 **實體公尺 (meters)** 為單位，無須額外的縮放或軸向旋轉。
+    -   **Centering (首幀骨盆對齊)**：為維持與 HybrIK 一致的零基準，全幀世界坐標會減去首幀 pelvis / MidHip 點在 XZ 平面上的投影值，使首幀骨盆位在原點 $(0, Y, 0)$。
+        *   `smpl24` 與 `h36m17` 基準點：首幀關節 0 (Pelvis)
+        *   `body25` 基準點：首幀關節 8 (MidHip)
+    -   **Grounding (基底貼平)**：計算首幀所有關節的最小 Y 座標 `min_y`，對全幀 3D 坐標進行 `Y -= min_y` 校正，使首幀最低點緊貼地面 $Y=0$。
+*   **相機座標系 (Camera Space) & 2D 投影**：
+    -   GVHMR 的 `smpl_params_incam` 重建後的頂點與關節處於標準 Y-down 相機坐標系下。
+    -   與相機內參矩陣 `K`（以預設或輸入解析度估計）結合後，可直接透過透視投影公式投影至 2D 影像平面：
+        $$\mathbf{P}_{\text{2d}} = \text{PerspectiveProjection}(\mathbf{J}_{\text{cam}}, \mathbf{K})$$
+    -   該投影已自動對齊 2D 影像邊界與圖像像素，無需額外對齊校正，隨後可進行 opencv 2D 骨架貼回渲染。
+
+### 2. 環境相容性補丁與路徑解耦 (Path Decoupling)
+*   **路徑解析修復**：
+    -   GVHMR 原生前處理模組（如 YOLO 偵測、ViTPose 姿態估計、DPVO 視覺里程計）在執行時使用相對路徑加載各自權重（如 `inputs/checkpoints/`），這在非 GVHMR 子目錄下執行時會報路徑錯誤。
+    -   **解決方案**：修改 `vitpose.py` 與 `slam.py` 中的硬編碼路徑，引入 `PROJ_ROOT` 環境變數拼接成絕對路徑，保證腳本自專案根目錄 `/home/allen/SkeletonHub` 執行時能正確加載。
+*   **Hydra 全域狀態清除**：
+    -   在腳本中重複調用 `initialize_config_module` 會觸發 Hydra 的重複初始化錯誤。
+    -   **解決方案**：在初始化前呼叫 `GlobalHydra.instance().clear()` 來動態重置 Hydra，保證多次模組導入不發生衝突。
+
+### 3. 多重貼回影片渲染與視覺化管線
+*   **2D 骨架影片覆載 (`--vis-skeleton-video`)**：
+    -   利用 `perspective_projection` 計算 2D 投影關節，再使用 OpenCV 對各幀繪製骨架與節點並保存。
+*   **3D SMPL Mesh 影片覆載 (`--vis-smpl-video`)**：
+    -   使用 PyTorch3D 優質的 `Renderer` 與 `SoftPhongShader` HEADLESS 渲染相機坐標系的 3D Mesh，無須依賴 Pyrender 的 EGL 複雜環境，運行極為高效且不會發生 X11/EGL 連接錯誤。
+*   **影片編碼標準化**：
+    -   所有生成的覆載影片皆經過 `ffmpeg` 二次轉換（採用 libx264 影片編碼與 yuv420p 色彩空間），保證瀏覽器與主流播放器均能完美播放。
+
+---
 *文件更新人：Antigravity*
-*最後更新：2026-06-30 01:05*
+*最後更新：2026-07-15 17:15*

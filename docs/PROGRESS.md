@@ -66,5 +66,8 @@
 | 2 | **HybrIK** | SMPL (24j), BODY25 (.npy) & H36M17 (.npy) | `detectors/hybrik_detector.py` | ✅ 已完成 | Antigravity | 整合 SMPL24、BODY25 與 H36M17 偵測，支援格式選擇（預設 'all'）、3D 視覺化與貼回影片（骨架/SMPL Mesh）雙重覆載渲染 |
 
 ---
-*最後更新時間：2026-06-30 01:18*
+| 3 | **GVHMR** | SMPL (24j), BODY25 (.npy) & H36M17 (.npy) | `detectors/gvhmr_detector.py` | ✅ 已完成 | Antigravity | 全域相機姿態感知 3D 重建，原生輸出 Y-up 物理公尺，具備 2D 骨架與 3D SMPL mesh 覆載渲染，整合 YOLOv8/ViTPose 完整前處理 |
+
+---
+*最後更新時間：2026-07-15 17:15*
 *維護人：Antigravity*
