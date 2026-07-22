@@ -314,7 +314,7 @@ class HybrikDetector:
         from utils.hybrik.service_fast import HybrikServiceFast
         self.service = HybrikServiceFast(gpu=self.gpu_id, skip_detection=True)
 
-    def detect_video(self, video_path, flip_test=True, scale=2.2, rebase=True, run_smpl24=True, run_body25=True, run_h36m17=True, need_overlay=False):
+    def detect_video(self, video_path, flip_test=True, scale=2.2, rebase=True, run_smpl24=True, run_body25=True, run_h36m17=True, need_overlay=False, bbox_file=None):
         """
         Run HybrIK inference on a video and return estimated skeletons.
         
@@ -343,6 +343,7 @@ class HybrikDetector:
                 skip_detection=True,
                 batch_size=32,
                 save_vertices=run_reconstruct,
+                bbox_file=bbox_file,
             )
             
             # Run inference directly inside python process
@@ -507,6 +508,7 @@ def main():
     parser.add_argument("--output-body25", help="Path to output BODY25 .npy file. If omitted, uses auto-suffixing.")
     parser.add_argument("--output-h36m17", help="Path to output H36M17 .npy file. If omitted, uses auto-suffixing.")
     parser.add_argument("--device", default="cuda:0", help="GPU device index (default: cuda:0)")
+    parser.add_argument("--bbox-file", help="Path to precomputed 2D bounding boxes text file (optional)")
     parser.add_argument("--scale", type=float, default=2.2, help="Coordinates scale multiplier for smpl24/h36m17 (default: 2.2)")
     parser.add_argument("--disable-rebase", action="store_true", help="Disable rebasing lowest keypoint height to 0")
     parser.add_argument("--format", choices=['smpl24', 'body25', 'h36m17', 'all'], default='all', help="Output skeleton format (default: all)")
@@ -560,7 +562,8 @@ def main():
             run_smpl24=run_smpl24,
             run_body25=run_body25,
             run_h36m17=run_h36m17,
-            need_overlay=need_overlay
+            need_overlay=need_overlay,
+            bbox_file=args.bbox_file
         )
         
         # Save results

@@ -232,7 +232,7 @@ class GVHMRDetector:
         regressor_17_path = os.path.join(project_root, 'external', 'WHAM', 'dataset/body_models/J_regressor_h36m.npy')
         self.J_regressor_17 = torch.from_numpy(np.load(regressor_17_path)).float().to(self.device)
         
-    def detect_video(self, video_path, static_cam=True, rebase=True, run_smpl24=True, run_body25=True, run_h36m17=True):
+    def detect_video(self, video_path, static_cam=True, rebase=True, run_smpl24=True, run_body25=True, run_h36m17=True, bbox_file=None):
         """
         Run GVHMR pipeline on a video and return estimated coordinates.
         """
@@ -243,10 +243,41 @@ class GVHMRDetector:
         
         # 1. Run Preprocessing Extractors
         print("📐 Running Preprocessing Extractors...")
-        tracker = Tracker()
-        bbx_xyxy = tracker.get_one_track(video_path).float()
+        if bbox_file is not None and os.path.exists(bbox_file):
+            print(f"📦 Loading precomputed bounding boxes from: {bbox_file}")
+            boxes = []
+            with open(bbox_file, 'r') as f:
+                for line in f:
+                    parts = line.strip().split()
+                    if len(parts) == 4:
+                        boxes.append([float(p) for p in parts])
+            bbx_xyxy = torch.tensor(boxes, dtype=torch.float32)
+            
+            # Fill missing frames (-1) by forward/backward carryover
+            last_valid = None
+            for idx in range(len(bbx_xyxy)):
+                if bbx_xyxy[idx, 0] == -1.0 or bbx_xyxy[idx, 2] - bbx_xyxy[idx, 0] <= 0:
+                    if last_valid is not None:
+                        bbx_xyxy[idx] = last_valid
+                else:
+                    last_valid = bbx_xyxy[idx].clone()
+            
+            if last_valid is None:
+                # Fallback to full frame
+                bbx_xyxy = torch.tensor([[0.0, 0.0, float(width), float(height)]]).repeat(length, 1)
+            else:
+                for idx in range(len(bbx_xyxy)):
+                    if bbx_xyxy[idx, 0] == -1.0 or bbx_xyxy[idx, 2] - bbx_xyxy[idx, 0] <= 0:
+                        for k in range(idx + 1, len(bbx_xyxy)):
+                            if bbx_xyxy[k, 0] != -1.0 and bbx_xyxy[k, 2] - bbx_xyxy[k, 0] > 0:
+                                bbx_xyxy[idx] = bbx_xyxy[k].clone()
+                                break
+        else:
+            tracker = Tracker()
+            bbx_xyxy = tracker.get_one_track(video_path).float()
+            del tracker
+            
         bbx_xys = get_bbx_xys_from_xyxy(bbx_xyxy, base_enlarge=1.2).float()
-        del tracker
         
         vitpose_extractor = VitPoseExtractor()
         vitpose = vitpose_extractor.extract(video_path, bbx_xys)
@@ -370,6 +401,7 @@ def main():
     parser.add_argument("--output-smpl24", help="Path to output SMPL24 .npy file. If omitted, uses auto-suffixing.")
     parser.add_argument("--output-body25", help="Path to output BODY25 .npy file. If omitted, uses auto-suffixing.")
     parser.add_argument("--output-h36m17", help="Path to output H36M17 .npy file. If omitted, uses auto-suffixing.")
+    parser.add_argument("--bbox-file", help="Path to precomputed 2D bounding boxes text file (optional)")
     parser.add_argument("--device", default="cuda:0", help="GPU device index (default: cuda:0)")
     parser.add_argument("--disable-rebase", action="store_true", help="Disable rebasing lowest keypoint height to 0")
     parser.add_argument("--format", choices=['smpl24', 'body25', 'h36m17', 'all'], default='all', help="Output skeleton format (default: all)")
@@ -421,7 +453,8 @@ def main():
             rebase=not args.disable_rebase,
             run_smpl24=run_smpl24,
             run_body25=run_body25,
-            run_h36m17=run_h36m17
+            run_h36m17=run_h36m17,
+            bbox_file=args.bbox_file
         )
         
         # Save results

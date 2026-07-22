@@ -51,7 +51,7 @@ class RTMPose3DDetector:
         
         self.device = device
         
-    def detect_video(self, video_path, rebase=True, bbox_thr=0.5):
+    def detect_video(self, video_path, rebase=True, bbox_thr=0.5, bbox_file=None):
         """
         Run 3D pose estimation on a video and return a numpy array of shape (T, 133, 3) in Y-up meters.
         """
@@ -63,6 +63,17 @@ class RTMPose3DDetector:
         
         print(f"🎥 Processing video: {video_path} ({total_frames} frames)")
         
+        precomputed_bboxes = None
+        if bbox_file is not None and os.path.exists(bbox_file):
+            print(f"📦 Loading precomputed bounding boxes from: {bbox_file}")
+            precomputed_bboxes = []
+            with open(bbox_file, 'r') as f:
+                for line in f:
+                    parts = line.strip().split()
+                    if len(parts) == 4:
+                        precomputed_bboxes.append([float(p) for p in parts])
+            precomputed_bboxes = np.array(precomputed_bboxes, dtype=np.float32)
+
         frames_joints = []
         last_valid_joints = np.zeros((133, 3), dtype=np.float32)
         
@@ -72,30 +83,37 @@ class RTMPose3DDetector:
             if not ret:
                 break
                 
-            # 1. Run Person Detector
-            det_result = inference_detector(self.detector, frame)
-            pred_instances = det_result.pred_instances.cpu().numpy()
-            
-            # Filter person bounding boxes
-            bboxes = pred_instances.bboxes
-            scores = pred_instances.scores
-            labels = pred_instances.labels
-            
-            # Select person class (0 in COCO) above threshold
-            valid_idx = np.logical_and(labels == 0, scores > bbox_thr)
-            bboxes = bboxes[valid_idx]
-            scores = scores[valid_idx]
-            
-            if len(bboxes) == 0:
-                # No person detected, carry over the last frame's joints
-                frames_joints.append(last_valid_joints.copy())
-                continue
+            main_bbox = None
+            if precomputed_bboxes is not None and frame_idx < len(precomputed_bboxes):
+                box = precomputed_bboxes[frame_idx]
+                if not (box[0] == -1.0 and box[1] == -1.0):
+                    main_bbox = np.array([box], dtype=np.float32)
+
+            if main_bbox is None:
+                # 1. Run Person Detector
+                det_result = inference_detector(self.detector, frame)
+                pred_instances = det_result.pred_instances.cpu().numpy()
                 
-            # Heuristic: Select the main person (largest bounding box area)
-            bbox_areas = (bboxes[:, 2] - bboxes[:, 0]) * (bboxes[:, 3] - bboxes[:, 1])
-            main_person_idx = np.argmax(bbox_areas)
-            main_bbox = bboxes[main_person_idx : main_person_idx + 1]
-            
+                # Filter person bounding boxes
+                bboxes = pred_instances.bboxes
+                scores = pred_instances.scores
+                labels = pred_instances.labels
+                
+                # Select person class (0 in COCO) above threshold
+                valid_idx = np.logical_and(labels == 0, scores > bbox_thr)
+                bboxes = bboxes[valid_idx]
+                scores = scores[valid_idx]
+                
+                if len(bboxes) == 0:
+                    # No person detected, carry over the last frame's joints
+                    frames_joints.append(last_valid_joints.copy())
+                    continue
+                    
+                # Heuristic: Select the main person (largest bounding box area)
+                bbox_areas = (bboxes[:, 2] - bboxes[:, 0]) * (bboxes[:, 3] - bboxes[:, 1])
+                main_person_idx = np.argmax(bbox_areas)
+                main_bbox = bboxes[main_person_idx : main_person_idx + 1]
+                
             # 2. Run 3D Pose Estimator
             pose_est_results = inference_topdown(self.pose_estimator, frame, main_bbox)
             
@@ -139,6 +157,7 @@ def main():
     parser.add_argument("--input", required=True, help="Path to input video file")
     parser.add_argument("--output", help="Path to output .npy file. If omitted, uses auto-suffixing.")
     parser.add_argument("--device", default="cuda:0", help="GPU device index (default: cuda:0)")
+    parser.add_argument("--bbox-file", help="Path to precomputed 2D bounding boxes text file (optional)")
     parser.add_argument("--disable-rebase", action="store_true", help="Disable rebasing lowest keypoint height to 0")
     
     args = parser.parse_args()
@@ -162,7 +181,8 @@ def main():
         detector = RTMPose3DDetector(device=args.device)
         joints_133 = detector.detect_video(
             video_path=args.input,
-            rebase=not args.disable_rebase
+            rebase=not args.disable_rebase,
+            bbox_file=args.bbox_file
         )
         
         # Save output

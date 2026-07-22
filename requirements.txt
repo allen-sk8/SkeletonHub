@@ -2,8 +2,8 @@
 --find-links https://dl.fbaipublicfiles.com/pytorch3d/prefixs/wheels/py310_cu117_pyt201/packages.html
 
 # -- Local Editable Installs
--e external/Hybrik
--e external/mmpose
+#-e external/Hybrik
+#-e external/mmpose
 
 # -- Deep Learning Base
 flash_attn==2.8.3

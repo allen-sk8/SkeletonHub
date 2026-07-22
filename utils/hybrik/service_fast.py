@@ -33,6 +33,7 @@ class HybrikFastRequest(BaseModel):
     skip_detection: bool = True
     batch_size: int = 1
     save_vertices: bool = False  # Save SMPL vertices (6890x3) for mesh rendering
+    bbox_file: Optional[str] = None
 
 
 class HybrikFastResponse(BaseModel):
@@ -50,18 +51,44 @@ class HybrikFastResponse(BaseModel):
 
 def read_bbox_centers(txt_path: Path) -> List[Tuple[float, float, float]]:
     """Parse YOLO bbox txt, return per-frame (cx, cy, h). Expects x1 y1 x2 y2 format."""
-    centers = []
+    raw_boxes = []
     with open(txt_path) as f:
         for ln in f:
             parts = ln.strip().split()
-            if len(parts) < 4:
-                continue
-            x1, y1, x2, y2 = map(float, parts[:4])
-            if x1 == -1 and y1 == -1:
-                continue  # skip missing frames
+            if len(parts) >= 4:
+                raw_boxes.append([float(p) for p in parts[:4]])
+            else:
+                raw_boxes.append([-1.0, -1.0, -1.0, -1.0])
+                
+    # Forward fill
+    last_valid = None
+    for idx in range(len(raw_boxes)):
+        box = raw_boxes[idx]
+        if box[0] == -1.0 or box[2] - box[0] <= 0:
+            if last_valid is not None:
+                raw_boxes[idx] = last_valid.copy()
+        else:
+            last_valid = box.copy()
+            
+    # Backward fill
+    if last_valid is not None:
+        for idx in range(len(raw_boxes)):
+            box = raw_boxes[idx]
+            if box[0] == -1.0 or box[2] - box[0] <= 0:
+                for k in range(idx + 1, len(raw_boxes)):
+                    if raw_boxes[k][0] != -1.0 and raw_boxes[k][2] - raw_boxes[k][0] > 0:
+                        raw_boxes[idx] = raw_boxes[k].copy()
+                        break
+
+    centers = []
+    for box in raw_boxes:
+        x1, y1, x2, y2 = box
+        if x1 == -1.0:
+            cx, cy, h = 0.0, 0.0, 1.0
+        else:
             cx, cy = (x1 + x2) / 2.0, (y1 + y2) / 2.0
             h = abs(y2 - y1)
-            centers.append((cx, cy, h))
+        centers.append((cx, cy, h))
     return centers
 
 
@@ -276,6 +303,63 @@ class HybrikServiceFast:
         if total_frames == 0:
             raise RuntimeError("Video has 0 frames")
 
+        # Load precomputed bboxes for cropping if available
+        bbox_list_all = []
+        bbox_file_to_load = None
+        if request.bbox_file:
+            bbox_file_to_load = Path(request.bbox_file)
+            if not bbox_file_to_load.exists():
+                bbox_file_to_load = None
+        if bbox_file_to_load is None:
+            yolo_dir = video_path.parent / "yolo"
+            bbox_txt = yolo_dir / "video.txt"
+            if bbox_txt.exists():
+                bbox_file_to_load = bbox_txt
+            else:
+                fallback_1 = yolo_dir / f"{video_path.stem}.txt"
+                if fallback_1.exists():
+                    bbox_file_to_load = fallback_1
+                else:
+                    clean_stem = video_path.stem.replace('_output', '').replace('_yolo', '')
+                    fallback_2 = yolo_dir / f"{clean_stem}.txt"
+                    if fallback_2.exists():
+                        bbox_file_to_load = fallback_2
+                    else:
+                        if yolo_dir.exists():
+                            txt_files = list(yolo_dir.glob("*.txt"))
+                            if txt_files:
+                                bbox_file_to_load = txt_files[0]
+                                
+        if bbox_file_to_load is not None and bbox_file_to_load.exists():
+            print(f"[ServiceFast] 📦 Loading bboxes for cropping from: {bbox_file_to_load}")
+            with open(bbox_file_to_load, 'r') as f:
+                for line in f:
+                    parts = line.strip().split()
+                    if len(parts) >= 4:
+                        bbox_list_all.append([float(p) for p in parts[:4]])
+                    else:
+                        bbox_list_all.append([-1.0, -1.0, -1.0, -1.0])
+            
+            # Fill missing frames (-1) using forward/backward carryover
+            last_valid = None
+            for idx in range(len(bbox_list_all)):
+                box = bbox_list_all[idx]
+                if box[0] == -1.0 or box[2] - box[0] <= 0:
+                    if last_valid is not None:
+                        bbox_list_all[idx] = last_valid.copy()
+                else:
+                    last_valid = box.copy()
+            if last_valid is not None:
+                for idx in range(len(bbox_list_all)):
+                    box = bbox_list_all[idx]
+                    if box[0] == -1.0 or box[2] - box[0] <= 0:
+                        for k in range(idx + 1, len(bbox_list_all)):
+                            if bbox_list_all[k][0] != -1.0 and bbox_list_all[k][2] - bbox_list_all[k][0] > 0:
+                                bbox_list_all[idx] = bbox_list_all[k].copy()
+                                break
+        else:
+            print("[ServiceFast] ⚠️ No precomputed bbox file found for cropping, using full-frame")
+
         # ── 2. Process in batches (with Adaptive OOM Retry) ──────────
         frame_idx = 0
         current_batch_size = batch_size
@@ -299,10 +383,15 @@ class HybrikServiceFast:
             # ── 2b. Transform (crop/resize/normalize) ──
             t = time.time()
             pose_inputs, bboxes_list, centers_list = [], [], []
-            for img, h, w in zip(rgb_images, heights, widths):
-                if request.skip_detection:
-                    tight_bbox = [0, 0, w, h]
-                else:
+            for i, (img, h, w) in enumerate(zip(rgb_images, heights, widths)):
+                global_frame_idx = frame_idx + i
+                tight_bbox = None
+                if global_frame_idx < len(bbox_list_all):
+                    box = bbox_list_all[global_frame_idx]
+                    if box[0] != -1.0:
+                        tight_bbox = box
+                
+                if tight_bbox is None:
                     tight_bbox = [0, 0, w, h]
 
                 pose_input, bbox, img_center = self.transformation.test_transform(img, tight_bbox)
@@ -377,27 +466,36 @@ class HybrikServiceFast:
                 res_db[k] = np.stack(res_db[k]) if isinstance(res_db[k][0], np.ndarray) else np.array(res_db[k])
 
         # ── 4. Compute global translation from YOLO bbox ────────────
-        yolo_dir = video_path.parent / "yolo"
-        bbox_txt = yolo_dir / "video.txt"
-        
-        # Try fallbacks if video.txt doesn't exist
-        if not bbox_txt.exists():
-            # Fallback 1: video_stem.txt (e.g. yolo_output.txt)
-            fallback_1 = yolo_dir / f"{video_path.stem}.txt"
-            if fallback_1.exists():
-                bbox_txt = fallback_1
-            else:
-                # Fallback 2: strip _output or similar suffixes
-                clean_stem = video_path.stem.replace('_output', '').replace('_yolo', '')
-                fallback_2 = yolo_dir / f"{clean_stem}.txt"
-                if fallback_2.exists():
-                    bbox_txt = fallback_2
+        # ── 4. Compute global translation from YOLO bbox ────────────
+        bbox_txt = None
+        if request.bbox_file:
+            bbox_txt = Path(request.bbox_file)
+            if not bbox_txt.exists():
+                print(f"[ServiceFast] ⚠️ Provided bbox_file does not exist: {request.bbox_file}")
+                bbox_txt = None
+
+        if bbox_txt is None:
+            yolo_dir = video_path.parent / "yolo"
+            bbox_txt = yolo_dir / "video.txt"
+            
+            # Try fallbacks if video.txt doesn't exist
+            if not bbox_txt.exists():
+                # Fallback 1: video_stem.txt (e.g. yolo_output.txt)
+                fallback_1 = yolo_dir / f"{video_path.stem}.txt"
+                if fallback_1.exists():
+                    bbox_txt = fallback_1
                 else:
-                    # Fallback 3: First available .txt file in yolo/
-                    if yolo_dir.exists():
-                        txt_files = list(yolo_dir.glob("*.txt"))
-                        if txt_files:
-                            bbox_txt = txt_files[0]
+                    # Fallback 2: strip _output or similar suffixes
+                    clean_stem = video_path.stem.replace('_output', '').replace('_yolo', '')
+                    fallback_2 = yolo_dir / f"{clean_stem}.txt"
+                    if fallback_2.exists():
+                        bbox_txt = fallback_2
+                    else:
+                        # Fallback 3: First available .txt file in yolo/
+                        if yolo_dir.exists():
+                            txt_files = list(yolo_dir.glob("*.txt"))
+                            if txt_files:
+                                bbox_txt = txt_files[0]
 
         if bbox_txt.exists():
             centers = read_bbox_centers(bbox_txt)
