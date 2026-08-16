@@ -154,7 +154,13 @@ class HybrikServiceFast:
     """Optimized HybrIK inference service with batch support."""
 
     def __init__(self, gpu=0, skip_detection=True):
-        self.gpu = gpu
+        if torch.cuda.is_available() and gpu is not None and str(gpu).lower() != 'cpu':
+            self.device = torch.device(f"cuda:{gpu}" if isinstance(gpu, int) else gpu)
+            self.gpu = gpu if isinstance(gpu, int) else 0
+        else:
+            self.device = torch.device("cpu")
+            self.gpu = "cpu"
+
         self.skip_detection = skip_detection
         
         # Paths configured to use local workspace assets
@@ -163,7 +169,7 @@ class HybrikServiceFast:
         self.ckpt_path = str(project_root / 'common_models/checkpoints/hybrik/hybrik_hrnet.pth')
         
         self._initialize_models()
-        print(f'[ServiceFast] Initialized. skip_detection={skip_detection}, ckpt={self.ckpt_path}')
+        print(f'[ServiceFast] Initialized on {self.device}. skip_detection={skip_detection}, ckpt={self.ckpt_path}')
 
     def _initialize_models(self):
         self.det_transform = T.Compose([T.ToTensor()])
@@ -171,7 +177,7 @@ class HybrikServiceFast:
         if not self.skip_detection:
             from torchvision.models.detection import fasterrcnn_resnet50_fpn
             self.det_model = fasterrcnn_resnet50_fpn(pretrained=True)
-            self.det_model.cuda(self.gpu)
+            self.det_model.to(self.device)
             self.det_model.eval()
             print('[ServiceFast] Faster R-CNN loaded.')
         else:
@@ -215,7 +221,7 @@ class HybrikServiceFast:
         else:
             self.hybrik_model.load_state_dict(save_dict)
 
-        self.hybrik_model.cuda(self.gpu)
+        self.hybrik_model.to(self.device)
         self.hybrik_model.eval()
 
     def _detect_person(self, input_image, prev_box):
@@ -401,12 +407,13 @@ class HybrikServiceFast:
             t_transform = time.time() - t
 
             try:
-                # ── 2c. GPU transfer ──
+                # ── 2c. Tensor transfer ──
                 t = time.time()
-                pose_batch = torch.stack(pose_inputs).to(self.gpu)
-                bboxes_t = torch.from_numpy(np.array(bboxes_list)).to(self.gpu).float()
-                centers_t = torch.from_numpy(np.array(centers_list)).to(self.gpu).float()
-                torch.cuda.synchronize()
+                pose_batch = torch.stack(pose_inputs).to(self.device)
+                bboxes_t = torch.from_numpy(np.array(bboxes_list)).to(self.device).float()
+                centers_t = torch.from_numpy(np.array(centers_list)).to(self.device).float()
+                if self.device.type == 'cuda':
+                    torch.cuda.synchronize()
                 t_transfer = time.time() - t
 
                 # ── 2d. Model forward ──
@@ -418,7 +425,8 @@ class HybrikServiceFast:
                         bboxes=bboxes_t,
                         img_center=centers_t
                     )
-                torch.cuda.synchronize()
+                if self.device.type == 'cuda':
+                    torch.cuda.synchronize()
                 t_forward = time.time() - t
 
                 # ── 2e. Result extraction (GPU→CPU) ──

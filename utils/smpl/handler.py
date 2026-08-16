@@ -1,6 +1,12 @@
 import os
 import torch
 import numpy as np
+
+# Compatibility patch for chumpy with numpy >= 1.24
+for attr in ['bool', 'int', 'float', 'complex', 'object', 'str', 'unicode']:
+    if not hasattr(np, attr):
+        setattr(np, attr, getattr(__builtins__, attr, str if attr in ['str', 'unicode'] else object))
+
 import smplx
 
 class SMPLHandler:
@@ -8,7 +14,18 @@ class SMPLHandler:
         """
         處理 SMPL 家族模型的加載與數據計算
         """
+        candidate_roots = [
+            os.path.abspath(model_root),
+            os.path.join(os.path.dirname(__file__), '../../common_models/body_models'),
+            '/app/SkeletonHub/common_models/body_models',
+            os.path.join(os.path.dirname(__file__), '../../../common_models/body_models'),
+        ]
         self.model_root = os.path.abspath(model_root)
+        for cand in candidate_roots:
+            if os.path.exists(cand):
+                self.model_root = os.path.abspath(cand)
+                break
+
         self.model_type = model_type
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.models = {}

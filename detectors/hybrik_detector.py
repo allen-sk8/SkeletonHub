@@ -435,13 +435,20 @@ class HybrikDetector:
                 output_dict['faces'] = faces
                 
                 # Load J_regressor_body25
-                regressor_path = os.path.join(project_root, 'common_models', 'regressor', 'J_regressor_body25.npy')
-                if not os.path.exists(regressor_path):
-                    fallback_path = os.path.join(project_root, 'external', 'EasyMocap', 'data', 'smplx', 'J_regressor_body25.npy')
-                    if os.path.exists(fallback_path):
-                        regressor_path = fallback_path
-                    else:
-                        raise FileNotFoundError(f"❌ Cannot find body25 regressor at {regressor_path}")
+                skel_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                regressor_candidates = [
+                    os.path.join(skel_root, 'common_models', 'regressor', 'J_regressor_body25.npy'),
+                    '/app/SkeletonHub/common_models/regressor/J_regressor_body25.npy',
+                    os.path.join(skel_root, 'external', 'EasyMocap', 'data', 'smplx', 'J_regressor_body25.npy'),
+                    'common_models/regressor/J_regressor_body25.npy',
+                ]
+                regressor_path = None
+                for cand in regressor_candidates:
+                    if os.path.exists(cand):
+                        regressor_path = cand
+                        break
+                if regressor_path is None:
+                    raise FileNotFoundError(f"❌ Cannot find body25 regressor at any candidate path: {regressor_candidates}")
                         
                 regressor = np.load(regressor_path)  # Shape: (25, 6890)
                 

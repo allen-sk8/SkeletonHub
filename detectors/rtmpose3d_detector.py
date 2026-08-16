@@ -130,9 +130,11 @@ class RTMPose3DDetector:
             elif keypoints.ndim == 4:
                 keypoints = np.squeeze(np.squeeze(keypoints, axis=0), axis=0)
                 
-            # 3. Coordinate Transformation (Following body3d_img2pose_demo.py logic)
-            # Swap: keypoints = -keypoints[..., [0, 2, 1]]
-            keypoints_demo = -keypoints[..., [0, 2, 1]]
+            # 3. Coordinate Transformation (Preserve X horizontal orientation to avoid mirroring)
+            keypoints_demo = keypoints.copy()
+            keypoints_demo[..., 0] = keypoints[..., 0]   # X: Right
+            keypoints_demo[..., 1] = -keypoints[..., 2]  # Y: Depth
+            keypoints_demo[..., 2] = -keypoints[..., 1]  # Z: Up (Z-up)
             
             if rebase:
                 keypoints_demo[..., 2] -= np.min(keypoints_demo[..., 2], axis=-1, keepdims=True)
