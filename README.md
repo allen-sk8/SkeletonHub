@@ -102,6 +102,38 @@ python inspector.py data/body25/walking_01_poses_smpl_body25.npy
 
 ---
 
+### 5. 影片 ➔ 3D 骨架偵測 (Detectors & Preprocessors)
+
+除了格式轉換，專案也能直接從影片偵測 3D 骨架。流程為「影片 ➔ 2D bbox（可快取）➔ 3D 偵測器 ➔ 各格式關節」：
+
+```mermaid
+graph LR
+    VIDEO[video.mp4] -- preprocessors/detect_bbox.py --> BBOX[data/bbox_cache/*_bbox.txt]
+    BBOX -- --bbox-file --> GVHMR[gvhmr_detector.py]
+    BBOX -- --bbox-file --> HYBRIK[hybrik_detector.py]
+    BBOX -- --bbox-file --> RTM[rtmpose3d_detector.py]
+    GVHMR --> OUT1[SMPL 24j / BODY25 / H36M17]
+    HYBRIK --> OUT1
+    RTM --> OUT2[COCO-Wholebody 133j]
+    OUT2 -- joints_133j_to_body_25j.py --> OUT1
+```
+
+```bash
+# 5.1 偵測人體框 (--det-type: yolov8 / yolov11 / rtmdet / skater_short / skater_long)
+python preprocessors/detect_bbox.py --input data/video/2A+2Lo_0001.mp4 --det-type yolov8
+
+# 5.2 GVHMR 3D 重建（輸出 24j / BODY25 / H36M17，並附 overlay 影片）
+python detectors/gvhmr_detector.py --input data/video/2A+2Lo_0001.mp4 --bbox-file data/bbox_cache/2A+2Lo_0001_bbox.txt --vis
+
+# 5.3 HybrIK / RTMPose3D 同理
+python detectors/hybrik_detector.py --help
+python detectors/rtmpose3d_detector.py --help
+```
+
+> 模型權重放在 `common_models/`（已被 `.gitignore` 排除，僅保留 README 與 `.gitkeep`），HybrIK 權重取得方式見 `common_models/checkpoints/hybrik/README.md`。
+
+---
+
 ## 📦 環境建置與打包說明 (Environment Setup & Package Details)
 
 本專案使用 `conda` 的 **`skeleton_env`** 作為執行與運算環境（Python 3.10）。

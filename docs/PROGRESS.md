@@ -64,11 +64,11 @@
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | 1 | **RTMPose3D** | COCO-Wholebody (133j) | `detectors/rtmpose3d_detector.py` | ✅ 已完成 | Antigravity | 使用 RTMW3D-X 進行 3D 姿態提取，座標自動校正為 Y-up 公尺 |
 | 2 | **HybrIK** | SMPL (24j), BODY25 (.npy) & H36M17 (.npy) | `detectors/hybrik_detector.py` | ✅ 已完成 | Antigravity | 整合 SMPL24、BODY25 與 H36M17 偵測，支援格式選擇（預設 'all'）、3D 視覺化與貼回影片（骨架/SMPL Mesh）雙重覆載渲染 |
-
----
 | 3 | **GVHMR** | SMPL (24j), BODY25 (.npy) & H36M17 (.npy) | `detectors/gvhmr_detector.py` | ✅ 已完成 | Antigravity | 全域相機姿態感知 3D 重建，原生輸出 Y-up 物理公尺，具備 2D 骨架與 3D SMPL mesh 覆載渲染，整合 YOLOv8/ViTPose 完整前處理 |
 | 4 | **BBox Preprocessor** | 2D Bounding Box (.txt) | `preprocessors/detect_bbox.py` | ✅ 已完成 | Antigravity | 統一前處理邊界框偵測器，支援 `yolov8`/`yolov11`/`rtmdet` 標準追蹤與針對滑冰影片優化的 `skater_short`/`skater_long` 演算法，支援跨模型快取共享 |
 
+三個 3D 偵測器（GVHMR / HybrIK / RTMPose3D）皆可用 `--bbox-file` 消費 `data/bbox_cache/<video>_bbox.txt`，避免各自重跑人體檢測器。
+
 ---
-*最後更新時間：2026-07-21 18:40*
-*維護人：Antigravity*
+*最後更新時間：2026-10-29*
+*維護人：Antigravity / Claude Code*

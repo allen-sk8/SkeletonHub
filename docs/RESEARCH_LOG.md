@@ -326,5 +326,13 @@
     *   完全跳過內部的 RTMDet 前向傳播，推論速度從單幀 1.5s 縮短至 0.05s (約提升至 20 FPS 以上)，帶來了數十倍的效率優化。
 
 ---
-*文件更新人：Antigravity*
-*最後更新：2026-07-21 18:43*
+
+## 🟢 [2026-10-29] 文件對齊與樣本資料入庫
+
+*   README 新增「影片 ➔ 3D 骨架偵測」章節（bbox 前處理 ➔ GVHMR/HybrIK/RTMPose3D ➔ 24j/BODY25/H36M17 的流程與指令）。
+*   PROGRESS.md 第 4 節表格修正（移除誤插的分隔線，GVHMR 與 BBox Preprocessor 回到表內）。
+*   入庫 GVHMR/HybrIK 對 `2A+2Lo_0001`、`tennis`、`8_front_9_cam2` 產出的樣本 npy 與 overlay 影片；輸入影片 (`data/video/`)、bbox 快取 (`data/bbox_cache/`) 與模型權重不入庫。
+
+---
+*文件更新人：Antigravity / Claude Code*
+*最後更新：2026-10-29*
