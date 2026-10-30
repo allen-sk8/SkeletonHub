@@ -336,3 +336,28 @@
 ---
 *文件更新人：Antigravity / Claude Code*
 *最後更新：2026-10-29*
+
+## 🟢 [2026-10-30] FlowHMR 偵測器整合與滑冰評估
+
+### 1. 整合方式 (`detectors/flowhmr_detector.py`)
+*   **環境隔離**：FlowHMR 需要 Python 3.10 + PyTorch 2.5.1+cu118 + 受限權重 (VGGT-Omega、SAM 3D Body，須在 HuggingFace 申請並使用 token)，與 `skeleton_env` (PyTorch 2.0.1) 無法共用 import，因此以 subprocess 呼叫 `flowhmr` conda env 的 python 絕對路徑，並清除 `VIRTUAL_ENV`、設定 `PYTHONNOUSERSITE=1`（`~/.local` 會洩漏進 conda env，pip 曾因此移除 `~/.local` 內的 CUDA 11.7 套件）。系統 ffmpeg 4.4.2 不支援 `-fps_mode`，以環境變數 `FFMPEG` 指向 `imageio_ffmpeg` 內建的 7.0.2。
+*   **FlowHMR 輸出 (`flowhmr_latest.npz`)**：`poses (T,52,3)` SMPL-H 軸角、`trans (T,3)`、`betas (1,16)`、`local_joints_positions (T,52,3)`、`foot_contacts (T,4)`；原生 Y-up、公尺、30 fps（影片先轉 30 fps）。
+*   **資料流**：npz ➔ SMPL-H 156D `.pkl` (`gender='neutral'`) ➔ `SMPLHandler` FK ➔ 6890 頂點 / 52 關節 ➔ `J_regressor_body25.npy` (BODY25)、`J_regressor_h36m.npy` (H36M17)、52j 取 `[:22]+[22]+[37]` (SMPL24)；XZ 以第 0 幀骨盆置中、Y 以第 0 幀最低關節貼地，與 `gvhmr_detector.py` 一致。
+*   **不提供 2D/Mesh overlay**：FlowHMR 結果不含相機內參。
+
+### 2. 技術細節與踩雷
+*   **SMPL-H neutral 的 16 維 betas**：FlowHMR 使用 `smplh/neutral/model.npz`（`shapedirs (6890,3,16)`，無手部 PCA 欄位），smplx 預期 `smplh/SMPLH_NEUTRAL.npz` 且必須有 `hands_components{l,r}`。原本 `SMPLHandler` 找不到 neutral 時會**靜默退回 female 並把 betas 截成 10 維**。現由偵測器自動產生補齊欄位的 `SMPLH_NEUTRAL.npz`（`common_models/` 已被 git 忽略），`SMPLHandler` 新增選用參數 `num_betas`（預設行為不變）。
+*   **`params_to_joints` 回傳 73 點**（52 關節 + 臉/指尖地標），取 `[:, :52]`。
+*   **驗證**：用 FlowHMR 自己的 `SMPLSkeleton` 對同一組 `poses/betas/trans` 做 FK，與本專案轉換結果平均差 0.3 mm（最大 1.2 mm）。
+*   **注意**：`local_joints_positions` 是網路另外預測的關節位置，與「由旋轉 FK 出來的關節」平均相差約 25 cm（`trans = pelvis_world - pelvis_rest`，見 `flowhmr/core/motion/motion_rep.py::_decode_motion_base_style`）。本專案輸出採用由 `poses` FK 的結果。
+
+### 3. 評估結果
+*   **一般動作**（`8_front_9_cam2`）：表現不錯。
+*   **低圈數滑冰** (`2A+2Lo_0001`、`1A_0001`、`1A+2T_0001`)：已產出結果，尚未仔細評估。
+*   **高圈數滑冰跳躍**（FineFS 5 秒片段：4T x2、4S、4Lz、4F、4Lo、3A、4Lz+3T、4S+3T，共 9 支）：**失敗，空中旋轉被壓成靜止姿態**。以髖部連線在 XZ 平面的朝向角 (yaw) 累計：4T_0001 約 1016°、4Lz_0001 約 940°、3A_0001 約 583°，而四圈跳至少應轉 1440°、三圈半約 1260°。FK(poses) 與預測關節的 yaw 幾乎相同，故非渲染或座標系造成。
+*   **建議**：高圈數滑冰請用 GVHMR / HybrIK；FlowHMR 僅用於一般動作。
+*   **資源**：預設設定顯存峰值約 30 GB（A6000 48GB），每支 5 秒影片約 1.5–2.5 分鐘。
+
+---
+*文件更新人：Claude Code*
+*最後更新：2026-10-30*

@@ -10,7 +10,7 @@ for attr in ['bool', 'int', 'float', 'complex', 'object', 'str', 'unicode']:
 import smplx
 
 class SMPLHandler:
-    def __init__(self, model_root="common_models/body_models", model_type="smplh"):
+    def __init__(self, model_root="common_models/body_models", model_type="smplh", num_betas=None):
         """
         處理 SMPL 家族模型的加載與數據計算
         """
@@ -27,6 +27,8 @@ class SMPLHandler:
                 break
 
         self.model_type = model_type
+        # None 表示沿用 smplx 預設 (10)；FlowHMR 使用 16 維 betas (SMPL-H neutral model.npz)
+        self.num_betas = num_betas
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.models = {}
 
@@ -54,7 +56,8 @@ class SMPLHandler:
                             use_pca=False,
                             flat_hand_mean=True,
                             batch_size=1,
-                            ext=ext
+                            ext=ext,
+                            **({'num_betas': self.num_betas} if self.num_betas else {})
                         ).to(self.device)
                         print(f"✅ 已加載 {self.model_type} (性別: {g}, 格式: {ext})")
                         success = True

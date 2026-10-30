@@ -66,9 +66,10 @@
 | 2 | **HybrIK** | SMPL (24j), BODY25 (.npy) & H36M17 (.npy) | `detectors/hybrik_detector.py` | ✅ 已完成 | Antigravity | 整合 SMPL24、BODY25 與 H36M17 偵測，支援格式選擇（預設 'all'）、3D 視覺化與貼回影片（骨架/SMPL Mesh）雙重覆載渲染 |
 | 3 | **GVHMR** | SMPL (24j), BODY25 (.npy) & H36M17 (.npy) | `detectors/gvhmr_detector.py` | ✅ 已完成 | Antigravity | 全域相機姿態感知 3D 重建，原生輸出 Y-up 物理公尺，具備 2D 骨架與 3D SMPL mesh 覆載渲染，整合 YOLOv8/ViTPose 完整前處理 |
 | 4 | **BBox Preprocessor** | 2D Bounding Box (.txt) | `preprocessors/detect_bbox.py` | ✅ 已完成 | Antigravity | 統一前處理邊界框偵測器，支援 `yolov8`/`yolov11`/`rtmdet` 標準追蹤與針對滑冰影片優化的 `skater_short`/`skater_long` 演算法，支援跨模型快取共享 |
+| 5 | **FlowHMR** | SMPL-H (156D .pkl), SMPL (24j), BODY25 (.npy), H36M17 (.npy) & SMPL-H (52j) | `detectors/flowhmr_detector.py` | ⚠️ 一般動作可用 / 滑冰高圈數失敗 | Claude Code | 以 subprocess 呼叫獨立 conda env `flowhmr`（YOLOX ➔ VGGT-Omega ➔ SAM 3D Body ➔ FlowHMR），原生 Y-up 公尺 30fps。**已知限制：高圈數滑冰跳躍（3A/4T/4S/4Lz/4F/4Lo/連跳）空中旋轉會收斂成靜止姿態，圈數嚴重不足；請改用 GVHMR / HybrIK**。無 2D/Mesh overlay（結果不含相機內參） |
 
 三個 3D 偵測器（GVHMR / HybrIK / RTMPose3D）皆可用 `--bbox-file` 消費 `data/bbox_cache/<video>_bbox.txt`，避免各自重跑人體檢測器。
 
 ---
-*最後更新時間：2026-10-29*
+*最後更新時間：2026-10-30*
 *維護人：Antigravity / Claude Code*

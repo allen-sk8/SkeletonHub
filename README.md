@@ -112,6 +112,8 @@ graph LR
     BBOX -- --bbox-file --> GVHMR[gvhmr_detector.py]
     BBOX -- --bbox-file --> HYBRIK[hybrik_detector.py]
     BBOX -- --bbox-file --> RTM[rtmpose3d_detector.py]
+    VIDEO -- flowhmr env subprocess --> FLOW[flowhmr_detector.py]
+    FLOW --> OUT1
     GVHMR --> OUT1[SMPL 24j / BODY25 / H36M17]
     HYBRIK --> OUT1
     RTM --> OUT2[COCO-Wholebody 133j]
@@ -125,10 +127,19 @@ python preprocessors/detect_bbox.py --input data/video/2A+2Lo_0001.mp4 --det-typ
 # 5.2 GVHMR 3D 重建（輸出 24j / BODY25 / H36M17，並附 overlay 影片）
 python detectors/gvhmr_detector.py --input data/video/2A+2Lo_0001.mp4 --bbox-file data/bbox_cache/2A+2Lo_0001_bbox.txt --vis
 
-# 5.3 HybrIK / RTMPose3D 同理
+# 5.3 FlowHMR（獨立 conda env `flowhmr`，以 subprocess 呼叫；輸出 SMPL-H pkl + 24j/BODY25/H36M17/52j）
+python detectors/flowhmr_detector.py --input data/video/8_front_9_cam2.mp4 --device cuda:2 --vis
+# 已有 FlowHMR 結果時只做轉換（不需 GPU）：
+python detectors/flowhmr_detector.py --input data/video/8_front_9_cam2.mp4 --from-npz <.../flowhmr_latest.npz>
+
+# 5.4 HybrIK / RTMPose3D 同理
 python detectors/hybrik_detector.py --help
 python detectors/rtmpose3d_detector.py --help
 ```
+
+> ⚠️ **FlowHMR 的適用範圍**：一般動作表現不錯（低圈數滑冰尚未仔細評估）；**高圈數滑冰跳躍（3A、4T、4S、4Lz、4F、4Lo 及連跳）會失敗，空中旋轉被壓成靜止姿態**（4T 整段身體朝向只轉約 1000°，實際至少 1440°；3A 約 580°，應 ≥1260°）。這類影片請用 GVHMR 或 HybrIK。
+>
+> FlowHMR 需要獨立環境與約 30 GB 顯存（A6000 48GB 可直接跑；24GB 卡加 `--vggt-interval 10`），路徑可用環境變數 `FLOWHMR_ROOT`、`FLOWHMR_PYTHON` 覆寫。
 
 > 模型權重放在 `common_models/`（已被 `.gitignore` 排除，僅保留 README 與 `.gitkeep`），HybrIK 權重取得方式見 `common_models/checkpoints/hybrik/README.md`。
 
