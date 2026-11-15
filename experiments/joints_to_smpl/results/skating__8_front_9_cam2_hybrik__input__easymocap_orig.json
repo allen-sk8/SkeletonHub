@@ -1,0 +1,17 @@
+{
+ "kind": "skating",
+ "clip": "8_front_9_cam2_hybrik",
+ "variant": "input",
+ "method": "easymocap_orig",
+ "frames": 98,
+ "sec": 7.9975221157073975,
+ "sec_per_1000_frames": 81.6073685276265,
+ "fit_to_input_mm": 804.4025897979736,
+ "fit_to_input_max_mm": 1660.78519821167,
+ "accel_pred": 6.035665035247803,
+ "accel_input": 10.813713073730469,
+ "turns_input": -0.0004549380305920854,
+ "turns_pred": -0.00601390567320545,
+ "heading_err_mean_deg": 137.83966064453125,
+ "heading_err_max_deg": 147.03759765625
+}

@@ -1,0 +1,17 @@
+{
+ "kind": "skating",
+ "clip": "8_front_9_cam2_hybrik",
+ "variant": "input",
+ "method": "hybrik_analytic",
+ "frames": 98,
+ "sec": 0.10199427604675293,
+ "sec_per_1000_frames": 1.0407579188444176,
+ "fit_to_input_mm": 1.211143797263503,
+ "fit_to_input_max_mm": 7.6146298088133335,
+ "accel_pred": 10.764030456542969,
+ "accel_input": 10.813713073730469,
+ "turns_input": -0.0004549380305920854,
+ "turns_pred": -0.0004640070039900468,
+ "heading_err_mean_deg": 0.006300326436758041,
+ "heading_err_max_deg": 0.014514152891933918
+}

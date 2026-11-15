@@ -1,0 +1,20 @@
+{
+ "kind": "amass",
+ "clip": "light_hopping_loose",
+ "variant": "noise",
+ "method": "handmade",
+ "frames": 49,
+ "sec": 109.98740839958191,
+ "sec_per_1000_frames": 2244.6409877465694,
+ "fit_to_input_mm": 22.92475663125515,
+ "fit_to_input_max_mm": 83.10482650995255,
+ "joint_mm": 24.519287049770355,
+ "joint_max_mm": 78.97619158029556,
+ "joint_rootaligned_mm": 24.538777768611908,
+ "rot_main_deg": 40.856651306152344,
+ "rot_leaf_deg": 20.282146453857422,
+ "limb_orient_main_deg": 35.07296371459961,
+ "vertex_mm": 39.98888283967972,
+ "accel_pred": 22.989999771118164,
+ "accel_gt": 15.307260513305664
+}

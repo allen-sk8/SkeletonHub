@@ -1,0 +1,20 @@
+{
+ "kind": "amass",
+ "clip": "walking_01",
+ "variant": "clean",
+ "method": "hybrik_analytic",
+ "frames": 150,
+ "sec": 0.09011578559875488,
+ "sec_per_1000_frames": 0.6007719039916992,
+ "fit_to_input_mm": 1.1856757337227464,
+ "fit_to_input_max_mm": 2.6076319627463818,
+ "joint_mm": 1.1856757337227464,
+ "joint_max_mm": 2.6076319627463818,
+ "joint_rootaligned_mm": 1.1856757337227464,
+ "rot_main_deg": 8.076308250427246,
+ "rot_leaf_deg": 12.724748611450195,
+ "limb_orient_main_deg": 8.617646217346191,
+ "vertex_mm": 10.919221676886082,
+ "accel_pred": 1.2062267065048218,
+ "accel_gt": 1.2061448097229004
+}

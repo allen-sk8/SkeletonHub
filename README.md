@@ -297,3 +297,5 @@ cp external/EasyMocap/data/smplx/J_regressor_mano_RIGHT.txt common_models/regres
 
 詳細的研究日誌請參閱：[docs/RESEARCH_LOG.md](docs/RESEARCH_LOG.md)
 詳細施工進度請參閱：[docs/PROGRESS.md](docs/PROGRESS.md)
+
+進行中的調查：「3D 關節座標轉 SMPL 參數」找比現有版本更好的方法。候選清單見 [docs/JOINTS_TO_SMPL_CANDIDATES.md](docs/JOINTS_TO_SMPL_CANDIDATES.md)，第一輪實測結果見 [docs/JOINTS_TO_SMPL_ROUND1_RESULTS.md](docs/JOINTS_TO_SMPL_ROUND1_RESULTS.md)（2026-11-15，等 Allen 看並排影片）。

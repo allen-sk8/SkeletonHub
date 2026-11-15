@@ -1,0 +1,20 @@
+{
+ "kind": "amass",
+ "clip": "ATUSquat",
+ "variant": "clean",
+ "method": "hybrik_analytic",
+ "frames": 50,
+ "sec": 17.31265163421631,
+ "sec_per_1000_frames": 346.2530326843262,
+ "fit_to_input_mm": 1.1657384457066655,
+ "fit_to_input_max_mm": 4.971212707459927,
+ "joint_mm": 1.1657384457066655,
+ "joint_max_mm": 4.971212707459927,
+ "joint_rootaligned_mm": 1.1657386785373092,
+ "rot_main_deg": 11.716158866882324,
+ "rot_leaf_deg": 18.54500961303711,
+ "limb_orient_main_deg": 15.915116310119629,
+ "vertex_mm": 17.39373430609703,
+ "accel_pred": 9.01634407043457,
+ "accel_gt": 8.993203163146973
+}

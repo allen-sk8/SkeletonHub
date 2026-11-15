@@ -1,0 +1,20 @@
+{
+ "kind": "amass",
+ "clip": "jumping_jacks",
+ "variant": "noise",
+ "method": "vposer_opt",
+ "frames": 40,
+ "sec": 51.028170585632324,
+ "sec_per_1000_frames": 1275.704264640808,
+ "fit_to_input_mm": 15.989527106285095,
+ "fit_to_input_max_mm": 44.45985704660416,
+ "joint_mm": 11.841263622045517,
+ "joint_max_mm": 52.498552948236465,
+ "joint_rootaligned_mm": 12.242955155670643,
+ "rot_main_deg": 10.335150718688965,
+ "rot_leaf_deg": 17.50318717956543,
+ "limb_orient_main_deg": 10.185219764709473,
+ "vertex_mm": 19.4388460367918,
+ "accel_pred": 34.23129653930664,
+ "accel_gt": 33.285614013671875
+}

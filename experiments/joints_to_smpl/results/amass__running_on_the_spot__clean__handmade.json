@@ -1,0 +1,20 @@
+{
+ "kind": "amass",
+ "clip": "running_on_the_spot",
+ "variant": "clean",
+ "method": "handmade",
+ "frames": 49,
+ "sec": 130.4905457496643,
+ "sec_per_1000_frames": 2663.0723622380474,
+ "fit_to_input_mm": 17.796216532588005,
+ "fit_to_input_max_mm": 70.17074525356293,
+ "joint_mm": 17.796216532588005,
+ "joint_max_mm": 70.17074525356293,
+ "joint_rootaligned_mm": 18.63112486898899,
+ "rot_main_deg": 35.06391525268555,
+ "rot_leaf_deg": 20.34524917602539,
+ "limb_orient_main_deg": 27.59978485107422,
+ "vertex_mm": 27.364052832126617,
+ "accel_pred": 25.279857635498047,
+ "accel_gt": 25.069561004638672
+}

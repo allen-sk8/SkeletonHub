@@ -1,0 +1,17 @@
+{
+ "kind": "skating",
+ "clip": "2A+2Lo_0001_gvhmr",
+ "variant": "input",
+ "method": "easymocap_fixed",
+ "frames": 125,
+ "sec": 51.76092863082886,
+ "sec_per_1000_frames": 414.08742904663086,
+ "fit_to_input_mm": 32.23313018679619,
+ "fit_to_input_max_mm": 127.28661298751831,
+ "accel_pred": 45.04047393798828,
+ "accel_input": 50.16524124145508,
+ "turns_input": -4.298795388125297,
+ "turns_pred": -4.280871150359405,
+ "heading_err_mean_deg": 13.042030334472656,
+ "heading_err_max_deg": 28.1998291015625
+}

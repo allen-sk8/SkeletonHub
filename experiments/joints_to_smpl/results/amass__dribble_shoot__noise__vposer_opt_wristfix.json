@@ -1,0 +1,20 @@
+{
+ "kind": "amass",
+ "clip": "dribble_shoot",
+ "variant": "noise",
+ "method": "vposer_opt_wristfix",
+ "frames": 39,
+ "sec": 38.39872598648071,
+ "sec_per_1000_frames": 984.5827176020696,
+ "fit_to_input_mm": 17.823968082666397,
+ "fit_to_input_max_mm": 106.1740517616272,
+ "joint_mm": 14.5081402733922,
+ "joint_max_mm": 95.15365213155746,
+ "joint_rootaligned_mm": 15.064839273691177,
+ "rot_main_deg": 10.060263633728027,
+ "rot_leaf_deg": 22.459930419921875,
+ "limb_orient_main_deg": 9.826443672180176,
+ "vertex_mm": 26.90197341144085,
+ "accel_pred": 27.857423782348633,
+ "accel_gt": 27.306228637695312
+}

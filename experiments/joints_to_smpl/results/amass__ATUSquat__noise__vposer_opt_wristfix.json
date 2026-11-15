@@ -1,0 +1,20 @@
+{
+ "kind": "amass",
+ "clip": "ATUSquat",
+ "variant": "noise",
+ "method": "vposer_opt_wristfix",
+ "frames": 50,
+ "sec": 98.59601879119873,
+ "sec_per_1000_frames": 1971.9203758239746,
+ "fit_to_input_mm": 16.58853143453598,
+ "fit_to_input_max_mm": 69.44215297698975,
+ "joint_mm": 12.2733935713768,
+ "joint_max_mm": 63.20887804031372,
+ "joint_rootaligned_mm": 12.625563889741898,
+ "rot_main_deg": 9.99234676361084,
+ "rot_leaf_deg": 18.956327438354492,
+ "limb_orient_main_deg": 9.918806076049805,
+ "vertex_mm": 21.953970193862915,
+ "accel_pred": 12.540474891662598,
+ "accel_gt": 8.993203163146973
+}

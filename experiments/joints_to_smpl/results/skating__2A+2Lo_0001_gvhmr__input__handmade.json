@@ -1,0 +1,17 @@
+{
+ "kind": "skating",
+ "clip": "2A+2Lo_0001_gvhmr",
+ "variant": "input",
+ "method": "handmade",
+ "frames": 125,
+ "sec": 263.19689655303955,
+ "sec_per_1000_frames": 2105.5751724243164,
+ "fit_to_input_mm": 10.498430579900742,
+ "fit_to_input_max_mm": 151.61597728729248,
+ "accel_pred": 51.96367263793945,
+ "accel_input": 50.16524124145508,
+ "turns_input": -4.298795388125297,
+ "turns_pred": -0.29141028655706175,
+ "heading_err_mean_deg": 24.407316207885742,
+ "heading_err_max_deg": 162.77365112304688
+}

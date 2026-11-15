@@ -1,0 +1,20 @@
+{
+ "kind": "amass",
+ "clip": "jumping_jacks",
+ "variant": "clean",
+ "method": "vposer_opt_wristfix",
+ "frames": 40,
+ "sec": 41.43405556678772,
+ "sec_per_1000_frames": 1035.851389169693,
+ "fit_to_input_mm": 10.183977894484997,
+ "fit_to_input_max_mm": 81.34956657886505,
+ "joint_mm": 10.183977894484997,
+ "joint_max_mm": 81.34956657886505,
+ "joint_rootaligned_mm": 10.582312010228634,
+ "rot_main_deg": 9.569510459899902,
+ "rot_leaf_deg": 17.43622398376465,
+ "limb_orient_main_deg": 9.51386547088623,
+ "vertex_mm": 19.228048622608185,
+ "accel_pred": 32.167842864990234,
+ "accel_gt": 33.285614013671875
+}

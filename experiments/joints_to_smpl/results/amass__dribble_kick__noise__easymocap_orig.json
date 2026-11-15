@@ -1,0 +1,20 @@
+{
+ "kind": "amass",
+ "clip": "dribble_kick",
+ "variant": "noise",
+ "method": "easymocap_orig",
+ "frames": 59,
+ "sec": 12.62553882598877,
+ "sec_per_1000_frames": 213.99218349133508,
+ "fit_to_input_mm": 727.1645665168762,
+ "fit_to_input_max_mm": 1910.9281301498413,
+ "joint_mm": 727.0063757896423,
+ "joint_max_mm": 1918.2733297348022,
+ "joint_rootaligned_mm": 488.8342320919037,
+ "rot_main_deg": 75.94677734375,
+ "rot_leaf_deg": 33.753204345703125,
+ "limb_orient_main_deg": 101.40766143798828,
+ "vertex_mm": 778.1749963760376,
+ "accel_pred": 12.7229585647583,
+ "accel_gt": 16.138580322265625
+}

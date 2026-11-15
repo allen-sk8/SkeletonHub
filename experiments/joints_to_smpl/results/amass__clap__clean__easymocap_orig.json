@@ -1,0 +1,20 @@
+{
+ "kind": "amass",
+ "clip": "clap",
+ "variant": "clean",
+ "method": "easymocap_orig",
+ "frames": 27,
+ "sec": 8.004999876022339,
+ "sec_per_1000_frames": 296.48147688971625,
+ "fit_to_input_mm": 833.5713744163513,
+ "fit_to_input_max_mm": 1711.7414474487305,
+ "joint_mm": 833.5713744163513,
+ "joint_max_mm": 1711.7414474487305,
+ "joint_rootaligned_mm": 577.7191519737244,
+ "rot_main_deg": 75.66558837890625,
+ "rot_leaf_deg": 32.505897521972656,
+ "limb_orient_main_deg": 107.27118682861328,
+ "vertex_mm": 921.6353893280029,
+ "accel_pred": 6.277299880981445,
+ "accel_gt": 10.82718563079834
+}

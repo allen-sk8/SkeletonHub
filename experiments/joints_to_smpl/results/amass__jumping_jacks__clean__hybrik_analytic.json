@@ -1,0 +1,20 @@
+{
+ "kind": "amass",
+ "clip": "jumping_jacks",
+ "variant": "clean",
+ "method": "hybrik_analytic",
+ "frames": 40,
+ "sec": 0.08741426467895508,
+ "sec_per_1000_frames": 2.185356616973877,
+ "fit_to_input_mm": 1.1689889943227172,
+ "fit_to_input_max_mm": 4.841451533138752,
+ "joint_mm": 1.1689889943227172,
+ "joint_max_mm": 4.841451533138752,
+ "joint_rootaligned_mm": 1.1689856182783842,
+ "rot_main_deg": 10.775641441345215,
+ "rot_leaf_deg": 18.411134719848633,
+ "limb_orient_main_deg": 16.685585021972656,
+ "vertex_mm": 16.717463731765747,
+ "accel_pred": 33.350433349609375,
+ "accel_gt": 33.285614013671875
+}

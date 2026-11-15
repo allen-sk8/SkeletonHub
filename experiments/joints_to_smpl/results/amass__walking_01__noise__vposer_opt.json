@@ -1,0 +1,20 @@
+{
+ "kind": "amass",
+ "clip": "walking_01",
+ "variant": "noise",
+ "method": "vposer_opt",
+ "frames": 150,
+ "sec": 104.8204038143158,
+ "sec_per_1000_frames": 698.8026920954387,
+ "fit_to_input_mm": 14.64034616947174,
+ "fit_to_input_max_mm": 42.26882755756378,
+ "joint_mm": 9.060798212885857,
+ "joint_max_mm": 32.0231057703495,
+ "joint_rootaligned_mm": 9.669523686170578,
+ "rot_main_deg": 4.539447784423828,
+ "rot_leaf_deg": 12.498991966247559,
+ "limb_orient_main_deg": 4.6626667976379395,
+ "vertex_mm": 14.496761374175549,
+ "accel_pred": 6.183614730834961,
+ "accel_gt": 1.2061448097229004
+}

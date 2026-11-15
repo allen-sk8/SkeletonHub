@@ -1,0 +1,17 @@
+{
+ "kind": "skating",
+ "clip": "2A+2Lo_0001_gvhmr",
+ "variant": "input",
+ "method": "vposer_opt_wristfix",
+ "frames": 125,
+ "sec": 103.61764121055603,
+ "sec_per_1000_frames": 828.9411296844482,
+ "fit_to_input_mm": 10.204615071415901,
+ "fit_to_input_max_mm": 68.71180236339569,
+ "accel_pred": 49.78665542602539,
+ "accel_input": 50.16524124145508,
+ "turns_input": -4.298795388125297,
+ "turns_pred": -4.2778607065372265,
+ "heading_err_mean_deg": 4.390133380889893,
+ "heading_err_max_deg": 9.880769729614258
+}

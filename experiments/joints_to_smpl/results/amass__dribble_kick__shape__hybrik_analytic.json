@@ -1,0 +1,20 @@
+{
+ "kind": "amass",
+ "clip": "dribble_kick",
+ "variant": "shape",
+ "method": "hybrik_analytic",
+ "frames": 59,
+ "sec": 0.09551477432250977,
+ "sec_per_1000_frames": 1.6188944800425384,
+ "fit_to_input_mm": 1.7571981297805905,
+ "fit_to_input_max_mm": 4.3008350767195225,
+ "joint_mm": 1.7571981297805905,
+ "joint_max_mm": 4.3008350767195225,
+ "joint_rootaligned_mm": 1.757195102982223,
+ "rot_main_deg": 10.645323753356934,
+ "rot_leaf_deg": 19.89967918395996,
+ "limb_orient_main_deg": 13.17320728302002,
+ "vertex_mm": 14.084461145102978,
+ "accel_pred": 15.249014854431152,
+ "accel_gt": 15.246459007263184
+}

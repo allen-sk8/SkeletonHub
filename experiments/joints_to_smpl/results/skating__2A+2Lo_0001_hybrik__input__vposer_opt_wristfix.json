@@ -1,0 +1,17 @@
+{
+ "kind": "skating",
+ "clip": "2A+2Lo_0001_hybrik",
+ "variant": "input",
+ "method": "vposer_opt_wristfix",
+ "frames": 125,
+ "sec": 103.73310828208923,
+ "sec_per_1000_frames": 829.8648662567139,
+ "fit_to_input_mm": 19.007479771971703,
+ "fit_to_input_max_mm": 199.73471760749817,
+ "accel_pred": 162.86839294433594,
+ "accel_input": 165.64356994628906,
+ "turns_input": -4.278802665514762,
+ "turns_pred": -4.221130976674879,
+ "heading_err_mean_deg": 6.944843292236328,
+ "heading_err_max_deg": 84.15182495117188
+}

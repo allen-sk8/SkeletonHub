@@ -1,0 +1,17 @@
+{
+ "kind": "skating",
+ "clip": "2A+2Lo_0001_hybrik",
+ "variant": "input",
+ "method": "handmade",
+ "frames": 125,
+ "sec": 287.45055890083313,
+ "sec_per_1000_frames": 2299.604471206665,
+ "fit_to_input_mm": 13.261825777590275,
+ "fit_to_input_max_mm": 130.09603321552277,
+ "accel_pred": 166.02833557128906,
+ "accel_input": 165.64356994628906,
+ "turns_input": -4.278802665514762,
+ "turns_pred": -4.27850395857506,
+ "heading_err_mean_deg": 10.656773567199707,
+ "heading_err_max_deg": 84.86088562011719
+}
