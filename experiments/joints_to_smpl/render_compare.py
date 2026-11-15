@@ -72,7 +72,8 @@ def draw_mesh(img, V, F, center, view, color, view_h=VIEW_H):
 def draw_skeleton(img, J, center, view, color=(60, 60, 60), dots_only=False, view_h=VIEW_H):
     uv, _ = project(J, center, view, view_h)
     if not dots_only:
-        for p, c in BONES:
+        from methods import H36M_BONES
+        for p, c in (BONES if J.shape[0] == 24 else H36M_BONES):
             cv2.line(img, tuple(np.round(uv[p]).astype(int)), tuple(np.round(uv[c]).astype(int)), color, 2, cv2.LINE_AA)
     for j in range(J.shape[0]):
         cv2.circle(img, tuple(np.round(uv[j]).astype(int)), 3, (0, 0, 230), -1, cv2.LINE_AA)
@@ -129,9 +130,55 @@ def render_clip(name, joints, preds, out_path, fps):
     print('已寫出', out_path, flush=True)
 
 
+def render_finefs17(clip, j24, j17, pred17, pred24fix, out_path, fps=25.0):
+    """官方 17 點路徑的精簡影片，五欄：
+    官方 17 點輸入、由 17 點擬合的 SMPL、再換放鬆手型、（對照）HybrIK 24 點輸入、（對照）由 24 點擬合的第 6 欄。
+    兩種骨架的座標系不同（官方 17 點以骨盆為原點且重新縮放過），所以每格各自以自己的骨盆為中心，
+    左三欄和右兩欄的朝向不保證一致。"""
+    from methods import to_smplh_relaxed, regress_h36m17
+    faces = get_model('neutral').faces.astype(np.int64)
+    with torch.no_grad():
+        v17 = fk(pred17['poses'], pred17['betas'], pred17['trans'], pred17['gender'], verts=True)[1].numpy()
+        p17j = fk(pred17['poses'], pred17['betas'], pred17['trans'], pred17['gender']).numpy()
+    # 放鬆手型需要 24 點的骨長來估 SMPL-H 體型，這裡用擬合結果自己的 24 關節
+    ph17, vh17 = to_smplh_relaxed(pred17, p17j)
+    with open(out_path.replace('.mp4', '__relaxed_hand_smplh.pkl'), 'wb') as f:
+        pickle.dump(dict(ph17, mocap_framerate=fps), f)
+    _, vh24 = to_smplh_relaxed(pred24fix, j24)
+    cols = [('official 17 joints', 'skel', j17, j17), ('A fit to 17 (VPoser)', 'mesh', v17, j17),
+            ('B = A + relaxed hand', 'mesh', vh17, j17), ('HybrIK 24 joints', 'skel', j24, j24),
+            ('6 from 24 joints', 'mesh', vh24, j24)]
+    T = j17.shape[0]
+    W, H = PW * len(cols), PH * 2
+    tmp = out_path.replace('.mp4', '_tmp.mp4')
+    vw = cv2.VideoWriter(tmp, cv2.VideoWriter_fourcc(*'mp4v'), fps, (W, H))
+    for t in range(T):
+        frame = np.full((H, W, 3), 255, np.uint8)
+        for r, view in enumerate(['front', 'side']):
+            for c, (label, kind, data, dots) in enumerate(cols):
+                panel = np.full((PH, PW, 3), 255, np.uint8)
+                ctr = dots[t, 0].copy()
+                ctr[1] += 0.1
+                if kind == 'skel':
+                    draw_skeleton(panel, data[t], ctr, view)
+                else:
+                    draw_mesh(panel, data[t], faces, ctr, view, (220, 170, 110))
+                    draw_skeleton(panel, dots[t], ctr, view, dots_only=True)
+                cv2.putText(panel, f'{label} [{view}]', (8, 22), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
+                cv2.rectangle(panel, (0, 0), (PW - 1, PH - 1), (200, 200, 200), 1)
+                frame[r * PH:(r + 1) * PH, c * PW:(c + 1) * PW] = panel
+        cv2.putText(frame, f'{clip} (FineFS official 17 joints)  frame {t}/{T - 1}', (8, H - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 1, cv2.LINE_AA)
+        vw.write(frame)
+    vw.release()
+    subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', tmp, '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
+                    '-crf', '23', out_path], check=True)
+    os.remove(tmp)
+    print('已寫出', out_path, flush=True)
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('kind', choices=['skating', 'amass'])
+    ap.add_argument('kind', choices=['skating', 'amass', 'finefs'])
     ap.add_argument('--clips', nargs='*')
     ap.add_argument('--variant', default='clean')
     ap.add_argument('--fps', type=float)
@@ -140,6 +187,19 @@ def main():
     out_dir = os.path.join(HERE, 'videos')
     os.makedirs(out_dir, exist_ok=True)
     os.chdir(ROOT)
+    if a.kind == 'finefs':
+        import json
+        for c in json.load(open(run_eval.FINEFS_SEL))['clips']:
+            clip = c['clip']
+            if a.clips and clip not in a.clips:
+                continue
+            j24 = run_eval.load_finefs(clip)
+            L = lambda v, m: pickle.load(open(os.path.join(res, f'finefs__{clip}__{v}__{m}.pkl'), 'rb'))
+            preds = {m: L('hybrik24', m) for m in LABELS if m != 'relaxed_hand'}
+            render_clip(f"FineFS {clip} (HybrIK 24 joints)", j24, preds, os.path.join(out_dir, f'finefs__{clip}__hybrik24.mp4'), 25.0)
+            render_finefs17(clip, j24, run_eval.load_finefs(clip, kind17=True), L('official17', 'vposer_opt_h36m17'),
+                            preds['vposer_opt_wristfix'], os.path.join(out_dir, f'finefs__{clip}__official17.mp4'))
+        return
     if a.kind == 'skating':
         items = [(c, 'input', np.load(os.path.join(ROOT, p)).astype(np.float32)) for c, p in run_eval.SKATING.items()]
     else:

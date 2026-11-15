@@ -76,7 +76,7 @@
 
 | # | 項目 | 文件 | 進度狀態 | 負責人 | 備註 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| 1 | **3D 關節座標轉 SMPL 參數：找比現有版本更好的方法** | [候選清單](JOINTS_TO_SMPL_CANDIDATES.md)、[第一輪實測結果](JOINTS_TO_SMPL_ROUND1_RESULTS.md) | 🟡 第一輪實測完成，等 Allen 看並排影片 | Claude Code | 確認第 10 項 `joints_24j_to_smpl.py` 有兩個錯（關節對應、整體旋轉的位移換算），十段 AMASS 平均關節誤差 76.7 公分，修正後 2.5 公分；現有程式尚未修改。HybrIK 解析式 0.1 公分、VPoser 加最佳化 0.8 公分、手寫版本 1.4 公分。另做了手腕修正版與放鬆手型。滑冰只測了有 24 關節輸入的兩支。程式在 `experiments/joints_to_smpl/` |
+| 1 | **3D 關節座標轉 SMPL 參數：找比現有版本更好的方法** | [候選清單](JOINTS_TO_SMPL_CANDIDATES.md)、[第一輪實測結果](JOINTS_TO_SMPL_ROUND1_RESULTS.md) | 🟡 第一輪實測完成，等 Allen 看並排影片 | Claude Code | 確認第 10 項 `joints_24j_to_smpl.py` 有兩個錯（關節對應、整體旋轉的位移換算），十段 AMASS 平均關節誤差 76.7 公分，修正後 2.5 公分；現有程式尚未修改。HybrIK 解析式 0.1 公分、VPoser 加最佳化 0.8 公分、手寫版本 1.4 公分。另做了手腕修正版與放鬆手型。滑冰只測了有 24 關節輸入的兩支。2026-11-15 追加：Allen 看過影片認為手腕修正加放鬆手型那一欄不錯，改用 FineFS 的骨架當輸入再出一批（六筆跳躍，HybrIK 24 點與官方 17 點各一支影片），等他看。程式在 `experiments/joints_to_smpl/` |
 
 ---
 *最後更新時間：2026-11-15*

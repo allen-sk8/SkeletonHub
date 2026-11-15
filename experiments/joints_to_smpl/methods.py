@@ -236,6 +236,95 @@ def to_smplh_relaxed(pred, target):
             out.vertices.numpy())
 
 
+H36M_PARENTS = [-1, 0, 1, 2, 0, 4, 5, 0, 7, 8, 9, 8, 11, 12, 8, 14, 15]
+H36M_BONES = [(H36M_PARENTS[i], i) for i in range(1, 17)]
+_J17 = None
+
+
+def h36m_regressor():
+    """H36M 17 點的回歸矩陣 (17, 6890)：由 SMPL 網格頂點線性組合出 17 個點。"""
+    global _J17
+    if _J17 is None:
+        _J17 = torch.as_tensor(np.load(os.path.join(ROOT, 'common_models', 'body_models', 'smpl',
+                                                    'J_regressor_h36m.npy')), dtype=torch.float32)
+    return _J17
+
+
+def normalize_h36m17(joints):
+    """FineFS 官方 17 點的前處理（會改動輸入，屬於「轉換」而不是「擬合」）：
+    1. 以骨盆為原點（官方骨架每幀把最低點貼在地面、骨盆水平位置固定為零，本來就沒有整體位移）。
+    2. 每一幀各自縮放，讓 16 段骨頭的總長等於整段的中位數（官方骨架同一段內骨長會變動）。
+    3. 整段再縮放一次，讓骨頭總長等於平均體型 SMPL 的對應總長（丟掉絕對身高）。
+    回傳 (處理後的關節, 每幀縮放倍率, 整段縮放倍率)。"""
+    j = np.asarray(joints, dtype=np.float32)
+    j = j - j[:, :1]
+    ip, ic = [p for p, c in H36M_BONES], [c for p, c in H36M_BONES]
+    tot = np.linalg.norm(j[:, ic] - j[:, ip], axis=-1).sum(1)
+    per_frame = np.median(tot) / tot
+    j = j * per_frame[:, None, None]
+    with torch.no_grad():
+        m = get_model('neutral')
+        r = h36m_regressor() @ m.v_template
+        ref = float((r[ic] - r[ip]).norm(dim=-1).sum())
+    g = ref / float(np.median(tot))
+    return (j * g).astype(np.float32), per_frame, g
+
+
+def vposer_opt_h36m17(target17, iters=(150, 500), w_prior=2e-4, w_smooth=2e-3, w_beta=1e-3, w_wrist=2e-3,
+                      w_wrist_smooth=2e-2):
+    """吃 H36M 17 點（Y-up、公尺、骨盆在原點）的 VPoser 加最佳化。
+    模型這邊的 17 點是用回歸矩陣從 SMPL 網格算出來的。17 點沒有手掌、腳尖、鎖骨，
+    所以手腕、腳掌的旋轉完全靠 VPoser 的先驗與「往零拉」的懲罰決定。"""
+    vp = _load_vposer()
+    model = get_model('neutral')
+    J17 = h36m_regressor()
+    T = target17.shape[0]
+    tgt = torch.as_tensor(target17, dtype=torch.float32)
+    betas = torch.zeros(10, requires_grad=True)
+    with torch.no_grad():
+        rest17 = J17 @ model.v_template
+    torso = [0, 1, 4, 7, 8, 11, 14]
+    from common import kabsch
+    orient = matrix_to_axis_angle(kabsch(rest17[torso] - rest17[0], tgt[:, torso] - tgt[:, :1])).clone().requires_grad_(True)
+    transl = (tgt[:, 0] - rest17[0]).clone().requires_grad_(True)
+    z = torch.zeros(T, 32, requires_grad=True)
+    hands = torch.zeros(T, 6)
+
+    def forward():
+        body = vp.decode(z, output_type='aa').reshape(T, 63)
+        out = model(betas=betas[None].expand(T, -1), global_orient=orient,
+                    body_pose=torch.cat([body, hands], 1), transl=transl, return_verts=True)
+        return torch.einsum('jv,tvc->tjc', J17, out.vertices), body
+
+    def run(params, n, lr):
+        opt = torch.optim.Adam(params, lr=lr)
+        for _ in range(n):
+            opt.zero_grad()
+            pj, body = forward()
+            wrist = body[:, 57:63]
+            loss = ((pj - tgt) ** 2).sum(-1).mean() + w_prior * (z ** 2).mean() + w_beta * (betas ** 2).mean()
+            loss = loss + w_wrist * (wrist ** 2).mean()
+            if T > 1:
+                loss = loss + w_smooth * ((z[1:] - z[:-1]) ** 2).mean() + w_wrist_smooth * ((wrist[1:] - wrist[:-1]) ** 2).mean()
+            loss.backward()
+            opt.step()
+
+    run([orient, transl], iters[0], 0.02)
+    run([orient, transl, z, betas], iters[1], 0.05)
+    with torch.no_grad():
+        _, body = forward()
+    poses = torch.cat([orient, body, hands], 1).detach().numpy()
+    return {'poses': poses, 'betas': betas.detach().numpy(), 'trans': transl.detach().numpy(), 'gender': 'neutral'}
+
+
+def regress_h36m17(pred):
+    """由擬合結果算出模型這邊的 17 點 (T,17,3)。"""
+    from common import fk
+    with torch.no_grad():
+        v = fk(pred['poses'], pred['betas'], pred['trans'], pred['gender'], verts=True)[1]
+        return torch.einsum('jv,tvc->tjc', h36m_regressor(), v).numpy()
+
+
 METHODS = {
     'easymocap_orig': easymocap_orig,
     'easymocap_fixed_order_only': easymocap_fixed_order_only,
@@ -244,4 +333,5 @@ METHODS = {
     'hybrik_analytic': hybrik_analytic,
     'vposer_opt': vposer_opt,
     'vposer_opt_wristfix': vposer_opt_wristfix,
+    'vposer_opt_h36m17': vposer_opt_h36m17,
 }

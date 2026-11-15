@@ -1,0 +1,85 @@
+{
+ "rule": "FineFS_jumps/3_final/test 裡，3A、4T、4S、3Lz+3T、2A、3Lo 各取片段編號排序後的第一筆；若來源影片和已選的重複就取下一筆（3Lo_0016 與 3Lz+3T_0009 同一支影片，改取 3Lo_0033）。挑之前沒有看過任何一筆的影片或骨架。",
+ "clips": [
+  {
+   "clip": "3A_0018",
+   "jump": "3A",
+   "video": "1023",
+   "competition": "fs_sa_2020_men",
+   "goe": 1.92,
+   "info": [
+    "x"
+   ],
+   "time": "2-56,2-59",
+   "frame_start": 4400,
+   "frame_end": 4475,
+   "fps": 25
+  },
+  {
+   "clip": "4T_0018",
+   "jump": "4T",
+   "video": "106",
+   "competition": "WC2021_Men",
+   "goe": -3.94,
+   "info": [
+    "x"
+   ],
+   "time": "1-38,1-42",
+   "frame_start": 2450,
+   "frame_end": 2550,
+   "fps": 25
+  },
+  {
+   "clip": "4S_0044",
+   "jump": "4S",
+   "video": "18",
+   "competition": "WC2019_Men",
+   "goe": -4.85,
+   "info": 0,
+   "time": "0-26,0-30",
+   "frame_start": 650,
+   "frame_end": 750,
+   "fps": 25
+  },
+  {
+   "clip": "3Lz+3T_0009",
+   "jump": "3Lz+3T",
+   "video": "1016",
+   "competition": "fs_sa_2020_men",
+   "goe": 0.35,
+   "info": null,
+   "time": "0-48,0-52",
+   "frame_start": 1200,
+   "frame_end": 1300,
+   "fps": 25
+  },
+  {
+   "clip": "2A_0003",
+   "jump": "2A",
+   "video": "1002",
+   "competition": "fs_4cc_2020_women",
+   "goe": 0.33,
+   "info": [
+    "x"
+   ],
+   "time": "2-58,3-01",
+   "frame_start": 4450,
+   "frame_end": 4525,
+   "fps": 25
+  },
+  {
+   "clip": "3Lo_0033",
+   "jump": "3Lo",
+   "video": "1040",
+   "competition": "fs_rc_2020_men",
+   "goe": 0.49,
+   "info": [
+    "x"
+   ],
+   "time": "3-19,3-22",
+   "frame_start": 4975,
+   "frame_end": 5050,
+   "fps": 25
+  }
+ ]
+}

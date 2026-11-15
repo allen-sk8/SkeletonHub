@@ -30,6 +30,22 @@ SKATING = {
     '8_front_9_cam2_hybrik': 'data/smpl_joints/samples_24j/8_front_9_cam2_hybrik_24j.npy',
 }
 VARIANTS = ['clean', 'noise', 'shape']
+FINEFS_SEL = os.path.join(HERE, 'finefs_selection.json')
+
+
+def load_finefs(clip, kind17=False):
+    """讀 FineFS 一筆跳躍。回傳 Y-up 公尺的關節：
+    kind17=False：資料集裡 HybrIK 偵測的 SMPL 24 點（整支影片的檔案切出該段）。
+    kind17=True ：官方 17 點（Z-up 轉 Y-up，再做 normalize_h36m17 的前處理）。"""
+    sel = {c['clip']: c for c in json.load(open(FINEFS_SEL))['clips']}[clip]
+    s, e = sel['frame_start'], sel['frame_end']
+    root = '/home/allen/datasets/FineFS'
+    if not kind17:
+        return np.load(f"{root}/hybrik/{sel['video']}/smpl24.npy")[s:e].astype(np.float32)
+    from utils.axis_converter import convert_joints_z_to_y
+    from methods import normalize_h36m17
+    j = convert_joints_z_to_y(np.load(f"{root}/skeleton/{sel['video']}.npz")['reconstruction'][s:e])
+    return normalize_h36m17(j)[0]
 
 
 def load_amass_gt(npz_path, frames, variant):
@@ -85,7 +101,15 @@ def one_task(task):
     os.chdir(ROOT)
     try:
         if kind == 'amass':
-            joints, gt = load_amass_gt(src, frames, variant)
+            joints, gt = load_amass_gt(src, frames, 'clean' if variant == 'h36m17' else variant)
+            if variant == 'h36m17':     # 用標準答案的網格回歸出理想的 17 點當輸入，量「只有 17 點」本身損失多少
+                from common import fk as _fk
+                from methods import h36m_regressor
+                with torch.no_grad():
+                    v = _fk(gt['poses'], gt['betas'], gt['trans'], gt['gender'], verts=True)[1]
+                    joints = torch.einsum('jv,tvc->tjc', h36m_regressor(), v).numpy()
+        elif kind == 'finefs':
+            joints, gt = load_finefs(clip, kind17=(variant == 'official17')), None
         else:
             joints, gt = np.load(src).astype(np.float32), None
         # 計時前先把模型與套件載好，時間只算擬合本身（EasyMocap 與手寫版本內部仍會各自載一次模型）
@@ -104,10 +128,17 @@ def one_task(task):
                'sec': dt, 'sec_per_1000_frames': dt / T * 1000}
         with torch.no_grad():
             pj = fk(pred['poses'], pred['betas'], pred['trans'], pred['gender']).numpy()
-        res['fit_to_input_mm'] = float(np.linalg.norm(pj - joints, axis=-1).mean() * 1000)
-        res['fit_to_input_max_mm'] = float(np.linalg.norm(pj - joints, axis=-1).max() * 1000)
+        pin = pj
+        if joints.shape[1] == 17:
+            from methods import regress_h36m17
+            pin = regress_h36m17(pred)
+        res['fit_to_input_mm'] = float(np.linalg.norm(pin - joints, axis=-1).mean() * 1000)
+        res['fit_to_input_max_mm'] = float(np.linalg.norm(pin - joints, axis=-1).max() * 1000)
         if gt is not None:
             res.update(evaluate(pred, gt))
+        elif joints.shape[1] == 17:
+            res['accel_pred'] = accel(pin, 25.0)
+            res['accel_input'] = accel(joints, 25.0)
         else:
             fps = 30.0
             res['accel_pred'] = accel(pj, fps)
@@ -121,7 +152,7 @@ def one_task(task):
             res['heading_err_max_deg'] = float(d.max())
         with open(os.path.join(RESULTS, tag + '.pkl'), 'wb') as f:
             pickle.dump({**{k: np.asarray(v) if k != 'gender' else v for k, v in pred.items()},
-                         'mocap_framerate': 30.0 if kind == 'skating' else 20.0}, f)
+                         'mocap_framerate': {'skating': 30.0, 'finefs': 25.0}.get(kind, 20.0)}, f)
         with open(out_json, 'w') as f:
             json.dump(res, f, indent=1)
         return tag, f"ok {dt:.0f}s fit={res['fit_to_input_mm']:.1f}mm"
@@ -133,7 +164,7 @@ def one_task(task):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('kind', choices=['amass', 'skating'])
+    ap.add_argument('kind', choices=['amass', 'skating', 'finefs'])
     ap.add_argument('--workers', type=int, default=6)
     ap.add_argument('--frames', type=int, default=150)
     ap.add_argument('--methods', nargs='*')
@@ -153,6 +184,14 @@ def main():
             for v in a.variants:
                 for m in methods:
                     tasks.append(('amass', clip, v, m, p, a.frames))
+    elif a.kind == 'finefs':
+        m24 = ['easymocap_fixed', 'handmade', 'hybrik_analytic', 'vposer_opt', 'vposer_opt_wristfix']
+        for c in json.load(open(FINEFS_SEL))['clips']:
+            for m in (a.methods or m24):
+                if m != 'vposer_opt_h36m17':
+                    tasks.append(('finefs', c['clip'], 'hybrik24', m, None, 0))
+            if not a.methods or 'vposer_opt_h36m17' in a.methods:
+                tasks.append(('finefs', c['clip'], 'official17', 'vposer_opt_h36m17', None, 0))
     else:
         for clip, rel in SKATING.items():
             for m in methods:

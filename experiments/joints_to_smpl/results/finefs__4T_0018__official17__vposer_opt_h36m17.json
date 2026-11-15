@@ -1,0 +1,13 @@
+{
+ "kind": "finefs",
+ "clip": "4T_0018",
+ "variant": "official17",
+ "method": "vposer_opt_h36m17",
+ "frames": 100,
+ "sec": 110.28892731666565,
+ "sec_per_1000_frames": 1102.8892731666565,
+ "fit_to_input_mm": 58.068614453077316,
+ "fit_to_input_max_mm": 258.96748900413513,
+ "accel_pred": 84.4757308959961,
+ "accel_input": 80.90514373779297
+}

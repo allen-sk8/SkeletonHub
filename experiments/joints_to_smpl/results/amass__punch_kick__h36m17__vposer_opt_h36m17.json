@@ -1,0 +1,20 @@
+{
+ "kind": "amass",
+ "clip": "punch_kick",
+ "variant": "h36m17",
+ "method": "vposer_opt_h36m17",
+ "frames": 47,
+ "sec": 102.63540625572205,
+ "sec_per_1000_frames": 2183.732047994086,
+ "fit_to_input_mm": 8.965149521827698,
+ "fit_to_input_max_mm": 41.10228270292282,
+ "joint_mm": 18.062859773635864,
+ "joint_max_mm": 134.3325823545456,
+ "joint_rootaligned_mm": 18.858203664422035,
+ "rot_main_deg": 11.994606018066406,
+ "rot_leaf_deg": 20.06541633605957,
+ "limb_orient_main_deg": 11.21080207824707,
+ "vertex_mm": 23.411817848682404,
+ "accel_pred": 16.860885620117188,
+ "accel_gt": 17.316736221313477
+}

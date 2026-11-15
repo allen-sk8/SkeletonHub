@@ -1,0 +1,17 @@
+{
+ "kind": "finefs",
+ "clip": "2A_0003",
+ "variant": "hybrik24",
+ "method": "vposer_opt_wristfix",
+ "frames": 75,
+ "sec": 75.61590456962585,
+ "sec_per_1000_frames": 1008.2120609283447,
+ "fit_to_input_mm": 15.766805037856102,
+ "fit_to_input_max_mm": 140.83373546600342,
+ "accel_pred": 135.67019653320312,
+ "accel_input": 138.52658081054688,
+ "turns_input": -4.050413585792024,
+ "turns_pred": -4.0782367408310245,
+ "heading_err_mean_deg": 5.634092330932617,
+ "heading_err_max_deg": 20.050811767578125
+}

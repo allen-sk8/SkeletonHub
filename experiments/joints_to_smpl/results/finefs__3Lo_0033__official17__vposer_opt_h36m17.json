@@ -1,0 +1,13 @@
+{
+ "kind": "finefs",
+ "clip": "3Lo_0033",
+ "variant": "official17",
+ "method": "vposer_opt_h36m17",
+ "frames": 75,
+ "sec": 55.56860041618347,
+ "sec_per_1000_frames": 740.9146722157797,
+ "fit_to_input_mm": 79.932302236557,
+ "fit_to_input_max_mm": 304.4242560863495,
+ "accel_pred": 49.92599105834961,
+ "accel_input": 45.00873947143555
+}

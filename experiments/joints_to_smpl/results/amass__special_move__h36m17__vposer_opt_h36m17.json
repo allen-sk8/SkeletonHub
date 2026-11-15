@@ -1,0 +1,20 @@
+{
+ "kind": "amass",
+ "clip": "special_move",
+ "variant": "h36m17",
+ "method": "vposer_opt_h36m17",
+ "frames": 37,
+ "sec": 35.838277101516724,
+ "sec_per_1000_frames": 968.6020838247763,
+ "fit_to_input_mm": 11.21875923126936,
+ "fit_to_input_max_mm": 35.33662110567093,
+ "joint_mm": 22.86127395927906,
+ "joint_max_mm": 151.07978880405426,
+ "joint_rootaligned_mm": 23.397700861096382,
+ "rot_main_deg": 15.352351188659668,
+ "rot_leaf_deg": 23.963254928588867,
+ "limb_orient_main_deg": 13.964739799499512,
+ "vertex_mm": 29.903272166848183,
+ "accel_pred": 20.460561752319336,
+ "accel_gt": 21.420652389526367
+}
