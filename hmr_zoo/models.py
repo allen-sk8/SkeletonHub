@@ -30,6 +30,8 @@ SPECS = {s.key: s for s in [
               license_note="HybrIK code Apache-2.0-like; SMPL non-commercial"),
     ModelSpec("gvhmr", "GVHMR (SMPL)", "skeleton_env", "smpl", "hmr_zoo.adapters:GVHMRDetector",
               license_note="GVHMR research license; SMPL non-commercial"),
+    ModelSpec("gvhmr_fast", "GVHMR-fast (fp16, locked boxes)", "skeleton_env", "skeleton",
+              "hmr_zoo.adapters:GVHMRFastDetector", license_note="same as GVHMR"),
     ModelSpec("wham", "WHAM (SMPL)", "wham", "smpl", "detectors.wham_detector:WHAMDetector",
               license_note="WHAM research license; SMPL non-commercial"),
     ModelSpec("instanthmr", "InstantHMR (MHR)", "skeleton_env", "mhr", "hmr_zoo.adapters:InstantHMRDetector",

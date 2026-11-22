@@ -11,6 +11,7 @@ read-only) rather than against this worktree.
 
 from __future__ import annotations
 
+import json
 import math
 import os
 import pickle
@@ -252,9 +253,49 @@ class RTMPose3DDetector:
                     extra_meta={"model": "rtmw3d-x_cocktail14-384x288", "note": "skeleton only; 3D depth is root-relative"})
 
 
+class GVHMRFastDetector:
+    """gvhmr_fast (fp16, no flip test, locked boxes, in-memory crops) on a clip dir. Boxes come from the clip's
+    boxes.json (next to clip.mp4), not from the txt file. `precise=True` runs the same code with fp32 + flip test
+    (the original GVHMR numerics) so pose-angle differences can be measured with identical code paths."""
+
+    def __init__(self, device: str = "cuda:0", precise: bool = False) -> None:
+        _use_skeletonhub_root()
+        os.chdir(str(C.SKELETONHUB_ROOT / "external" / "gvhmr"))
+        import torch
+        from detectors.gvhmr_fast_detector import GVHMRFastDetector as _F
+
+        self.torch = torch
+        self.baseline_mb = ProcessVramMonitor().baseline_mb
+        t0 = time.perf_counter()
+        self.det = _F(device=device, fp16=not precise, flip_test=precise)
+        self.precise = precise
+        print(f"[GVHMR-fast] loaded in {time.perf_counter() - t0:.2f}s (precise={precise})", flush=True)
+
+    def detect_video(self, video_path: str, bbox_file: str) -> dict:
+        torch = self.torch
+        boxes_json = Path(video_path).parent / "boxes.json"
+        torch.cuda.reset_peak_memory_stats(0)
+        torch.cuda.synchronize(0)
+        t0 = time.perf_counter()
+        with ProcessVramMonitor(baseline_mb=self.baseline_mb) as mon:
+            res = self.det.detect_video_fast(video_path, boxes_json, verbose=False)
+        torch.cuda.synchronize(0)
+        infer_sec = time.perf_counter() - t0
+        T = res["joints17_cam"].shape[0]
+        K = C.make_intrinsics(*[float(res["K"][i, j]) for i, j in ((0, 0), (1, 1), (0, 2), (1, 2))])
+        self.last_full = res
+        return dict(mesh_type="skeleton", verts_cam=np.zeros((T, 1, 3), np.float32),
+                    joints3d_cam=np.nan_to_num(res["joints17_cam"]).astype(np.float32), K_fullimg=K,
+                    faces=np.zeros((0, 3), np.int32), infer_sec=infer_sec,
+                    peak_vram_gb=max(torch.cuda.max_memory_allocated(0) / 1024**3, mon.peak_gb),
+                    extra_meta={"model": "gvhmr_fast", "precise": self.precise, "note": "skeleton only in the zoo (no mesh)",
+                                **json.loads(str(res["meta_json"]))})
+
+
 REGISTRY = {
     "hybrik": HybrIKDetector,
     "gvhmr": GVHMRDetector,
+    "gvhmr_fast": GVHMRFastDetector,
     "instanthmr": InstantHMRDetector,
     "rtmpose3d": RTMPose3DDetector,
 }

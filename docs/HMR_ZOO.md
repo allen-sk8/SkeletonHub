@@ -429,3 +429,8 @@ FlowHMR 這次**沒有整合**（見「已知問題」）。
 - `outputs/hmr_zoo/_validate_tracker/`：追蹤模組驗收用。
 - `outputs/hmr_zoo/flowhmr/`：FlowHMR 探針失敗留下的偵測與轉檔中間檔。
 - `outputs/hmr_zoo/*.log`：各階段紀錄。
+
+## gvhmr_fast 與整場影片流程（2026-11-23）
+
+整場（數分鐘）影片用的加速版 GVHMR、鎖定單一選手的追蹤（`track_person.py --target lock`）、全域 SMPL 輸出格式與 10 支 FineFS 整場影片的試跑結果，
+見 `docs/FINEFS_FULL_TEST_2026-11-23.md`。`gvhmr_fast` 已登記在 `hmr_zoo/models.py`（不在預設清單；zoo 內只有骨架、沒有網格）。

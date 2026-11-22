@@ -14,3 +14,13 @@ Branch `feat/hmr-zoo`, worktree `/home/allen/SkeletonHub.hmr-zoo`. Machine `neve
 - 00:37 start neverdie GPU0 (gpufree ok): FlowHMR probe on 3A clip (vggt_interval 10, hard cap 23.5 GB), est <15 min. tmux skhub-flow
 - 00:43 FlowHMR probe on GPU0: OOM at 23.5 GB cap (VGGT-Omega attention, vggt_interval 10) on TITAN RTX 24GB; stopped, GPU0 back to 9 MiB. Not retried (needs A6000/>24GB -> Allen to decide).
 - 00:44 all done. No GPU in use by this task (GPU0/1 at 9 MiB), tmux skhub-hmrzoo and skhub-flow closed.
+- 2026-11-23 01:15 start neverdie GPU0 (gpufree ok, 5 other empty): gvhmr_fast development + 2-clip check (3A_3A_0133, 4Lz_4Lz_0018), est 15 min, <8 GB. tmux skhub-finefs10 (dev runs use this session name)
+- 2026-11-23 01:22 gvhmr_fast 2-clip check done (GPU0 released, 9 MiB). start neverdie GPU0 (gpufree ok, 5 other empty): FineFS 10 whole-match videos, track (<=6 GB) then gvhmr_fast (~3 GB), est ~1 h, stop if >3 h or >20 GB or foreign process. tmux skhub-finefs10
+- 2026-11-23 01:30 stopped FineFS-10 run after video 36 (lock rule picked a spectator; fixing rule, rerun). GPU0 released.
+- 2026-11-23 01:40 restart FineFS-10 on neverdie GPU0 (gpufree ok): tracking (RF-DETR + BoT-SORT without in-tracker Re-ID, lock step uses OSNet Re-ID) then gvhmr_fast; est 1 h; tmux skhub-finefs10
+- 2026-11-23 02:31 start neverdie GPU0 (gpufree ok): stage B gvhmr_fast on 10 whole FineFS videos (stage A tracking done, lock rule fixed), est 45 min, <4 GB expected. tmux skhub-finefs10
+- 2026-11-23 02:38 restart stage B (SimpleVO made failure-tolerant) neverdie GPU0 (gpufree ok), est 45 min. tmux skhub-finefs10
+- 2026-11-23 03:01 FineFS-10 stage B done, GPU0 released (9 MiB), tmux closed. Next: 5s-clip comparison (GPU0, est 10 min).
+- 2026-11-23 03:02 start neverdie GPU0 (gpufree ok): 5s-clip comparison (original GVHMR + precise vs whole-video gvhmr_fast, 41 clips), est 15 min, <8 GB. tmux skhub-finefs10
+- 2026-11-23 03:11 neverdie GPU0 (same card as my clip-compare run): rerun gvhmr_fast for videos 456, 652 after lock-rule tweak, est 8 min, <8 GB. tmux skhub-finefs10b
+- 2026-11-23 03:43 all GPU work of the FineFS-10 test finished; GPU0 back to 9 MiB, tmux skhub-finefs10 / skhub-finefs10b closed.
