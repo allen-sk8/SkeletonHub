@@ -18,7 +18,7 @@ case "$1" in
 track)
   log "track lane start (gpu $GPU)"
   $ENVS/reidtrack/bin/python scripts/finefs_full_track.py --ids $IDS --out $R/_track --tracker botsort-reid --gpu-mem-gb 6 2>&1 | tee -a $R/track.log
-  log "track lane DONE"; touch $R/_track/ALL_DONE ;;
+  if [ -f $R/STOP ]; then log "track lane stopped"; else log "track lane DONE"; touch $R/_track/ALL_DONE; fi ;;
 gvhmr)
   log "gvhmr lane start (gpu $GPU)"
   ready=()
@@ -62,11 +62,13 @@ watchdog)
       [ -z "$args" ] && continue                      # process already gone (or not visible): ignore
       if [[ "$args" != *finefs_v2_batch100* && "$args" != *"$R"* ]]; then
         sleep 10; nvidia-smi --query-compute-apps=pid --format=csv,noheader -i $GPU | grep -qw "$pid" && \
-          reason="foreign process on card: pid $pid $(ps -o user= -p $pid) ${args:0:80}"
+          foreign="foreign process on card: pid $pid $(ps -o user= -p $pid) ${args:0:80}"
+        continue                                       # not ours: not counted in our memory
       fi
       tot=$((tot + mem))
     done < <(nvidia-smi --query-compute-apps=pid,used_memory --format=csv,noheader -i $GPU)
     [ $tot -gt $MAX_MIB ] && reason="our memory ${tot} MiB > ${MAX_MIB}"
+    [ -n "$foreign" ] && reason="$foreign"; foreign=""
     [ $(( $(date +%s) - t0 )) -gt $((MAX_H * 3600)) ] && reason="wall time > ${MAX_H} h"
     if [ -n "$reason" ]; then
       log "STOP: $reason"; touch $R/STOP
