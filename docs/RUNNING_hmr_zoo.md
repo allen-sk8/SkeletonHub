@@ -24,3 +24,6 @@ Branch `feat/hmr-zoo`, worktree `/home/allen/SkeletonHub.hmr-zoo`. Machine `neve
 - 2026-11-23 03:02 start neverdie GPU0 (gpufree ok): 5s-clip comparison (original GVHMR + precise vs whole-video gvhmr_fast, 41 clips), est 15 min, <8 GB. tmux skhub-finefs10
 - 2026-11-23 03:11 neverdie GPU0 (same card as my clip-compare run): rerun gvhmr_fast for videos 456, 652 after lock-rule tweak, est 8 min, <8 GB. tmux skhub-finefs10b
 - 2026-11-23 03:43 all GPU work of the FineFS-10 test finished; GPU0 back to 9 MiB, tmux skhub-finefs10 / skhub-finefs10b closed.
+- 2026-11-23 22:32 start neverdie GPU0 (gpufree ok, 3 other empty cards left): FineFS v2 test exp2 = botsort-reid tracking on the 10 whole videos (cached detections), est 45 min, <=6 GB. tmux skhub-v2test
+- 2026-11-23 23:22 exp2 done (GPU0 back to idle). start neverdie GPU0 (gpufree ok, 3 other empty cards left): FineFS v2 test exp3 = gvhmr_fast with half- and full-resolution crops on the 10 whole videos, est 60-75 min, <8 GB; stop if >2.5 h. tmux skhub-v2test
+- 2026-11-24 00:05 exp3 done, GPU0 back to 9 MiB, tmux skhub-v2test closed. Rest of the v2 test (flags, previews, checks) is CPU only.
