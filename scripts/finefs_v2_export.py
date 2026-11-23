@@ -237,19 +237,29 @@ def main():
     ap.add_argument("--ids", default="36,261,819,739,980,652,187,513,521,456")
     ap.add_argument("--boxes-from")
     ap.add_argument("--tracks-from")
+    ap.add_argument("--root", default=None, help="output root (default outputs/finefs_v2_test)")
+    ap.add_argument("--no-summary", action="store_true", help="stage4: only flags/preview/check per video, no check.json/info.txt")
     ap.add_argument("--n-total", type=int, default=1167)
     ap.add_argument("--hours-total", type=float, default=65.3)
     a = ap.parse_args()
-    ids = a.ids.split(",")
+    global OUT
+    if a.root:
+        OUT = Path(a.root).resolve()
+    ids = [v for v in a.ids.split(",") if v]
     if a.stage == "stage1":
         stage1(ids, Path(a.boxes_from), Path(a.tracks_from))
         return
     checks = []
     for vid in ids:
         cl = flags(vid)
-        preview(vid, cl)
-        checks.append(check(vid))
-        print("[check]", json.dumps(checks[-1]), flush=True)
+        if not (OUT / "5_preview" / f"{vid}.mp4").exists():
+            preview(vid, cl)
+        c = check(vid)
+        (OUT / "4_flags" / vid / "check.json").write_text(json.dumps(c, indent=1))
+        checks.append(c)
+        print("[check]", json.dumps(c), flush=True)
+    if a.no_summary:
+        return
     bj = json.loads((OUT / "1_tracking" / ids[0] / "boxes.json").read_text())
     write_info(bj.get("target"), bj.get("tracker"),
                "offline lock-on per shot (preprocessors/track_person_offline.py)" if bj.get("target") == "lock_offline"

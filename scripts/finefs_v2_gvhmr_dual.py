@@ -13,6 +13,7 @@ Writes (out = outputs/finefs_v2_test):
   out/3_gvhmr/<id>/gvhmr_fast.npz            variant half (the current default), same format as gvhmr_fast_detector.py
   out/2_pose2d/<id>/vitpose_h.npz            kp2d (T,17,3) of variant half [x, y, conf] in original-video pixels, NaN absent
   out/_exp3_resolution/<id>/gvhmr_full.npz   variant full, same format; pose2d_full.npz the full-res 2D; stats.json timings
+  --variants half: production run, no full-resolution decode; stats.json goes to out/3_gvhmr/<id>/
 
   python scripts/finefs_v2_gvhmr_dual.py --ids 36,261 --boxes-root outputs/finefs_v2_test/1_tracking --out outputs/finefs_v2_test
 """
@@ -38,7 +39,10 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--video-dir", default="/home/allen/datasets/FineFS/video")
     ap.add_argument("--device", default="cuda:0")
+    ap.add_argument("--variants", default="half,full", help="'half' alone = production run (no full-resolution decode)")
     a = ap.parse_args()
+    variants = [v for v in ("half", "full") if v in a.variants.split(",")]
+    do_full = "full" in variants
     out = Path(a.out).resolve()
     boxes_root = Path(a.boxes_root).resolve()
     os.chdir(str(ROOT / "external" / "gvhmr"))
@@ -81,6 +85,9 @@ def main():
         video = Path(a.video_dir) / f"{vid}.mp4"
         bj_path = boxes_root / vid / "boxes.json"
         bj = json.loads(bj_path.read_text())
+        if bj.get("no_person") or "padded_112" not in bj:
+            print(f"[dual] {vid}: no person locked, skipped", flush=True)
+            continue
         W, H, fps = int(bj["width"]), int(bj["height"]), float(bj["fps"])
         n = int(bj["n_frames"])
         present = np.asarray(bj["present"], bool)[:n]
@@ -110,7 +117,7 @@ def main():
             if use.any():
                 bxy[torch.from_numpy(use)] = get_bbx_xys_from_xyxy(torch.from_numpy(boxes[use]), base_enlarge=1.2).float()
             m = int(use.sum())
-            crops = {"half": np.zeros((m, 256, 256, 3), np.uint8), "full": np.zeros((m, 256, 256, 3), np.uint8)}
+            crops = {v: np.zeros((m, 256, 256, 3), np.uint8) for v in variants}
             row = -np.ones(n, np.int64)
             row[use] = np.arange(m)
             vo_need = set()
@@ -119,25 +126,27 @@ def main():
             vo_frames = {}
             ph, w2, h2 = det._open_ffmpeg(video, W, H)
             pf = subprocess.Popen(["ffmpeg", "-loglevel", "error", "-i", str(video), "-an", "-vsync", "0", "-f", "rawvideo",
-                                   "-pix_fmt", "rgb24", "-"], stdout=subprocess.PIPE, bufsize=W * H * 3 * 2)
+                                   "-pix_fmt", "rgb24", "-"], stdout=subprocess.PIPE, bufsize=W * H * 3 * 2) if do_full else None
             fbh, fbf = w2 * h2 * 3, W * H * 3
             k = 0
             while k < n:
-                bh, bf = ph.stdout.read(fbh), pf.stdout.read(fbf)
-                if len(bh) < fbh or len(bf) < fbf:
+                bh = ph.stdout.read(fbh)
+                bf = pf.stdout.read(fbf) if do_full else b""
+                if len(bh) < fbh or (do_full and len(bf) < fbf):
                     break
                 if use[k] or k in vo_need:
                     frh = np.frombuffer(bh, np.uint8).reshape(h2, w2, 3)
                     if use[k]:
                         c, s_ = bxy[k, :2].numpy(), float(bxy[k, 2])
                         crops["half"][row[k]] = crop_half(frh, c, s_)
-                        t1 = time.perf_counter()
-                        crops["full"][row[k]] = crop_full(np.frombuffer(bf, np.uint8).reshape(H, W, 3), c, s_)
-                        tim["crop_full"] += time.perf_counter() - t1
+                        if do_full:
+                            t1 = time.perf_counter()
+                            crops["full"][row[k]] = crop_full(np.frombuffer(bf, np.uint8).reshape(H, W, 3), c, s_)
+                            tim["crop_full"] += time.perf_counter() - t1
                     if k in vo_need:
                         vo_frames[k] = frh.copy()
                 k += 1
-            for p in (ph, pf):
+            for p in [x for x in (ph, pf) if x is not None]:
                 p.stdout.close()
                 p.terminate()
                 p.wait()
@@ -147,7 +156,7 @@ def main():
 
             K = estimate_K(W, H).float()
             res = {}
-            for v in ("half", "full"):
+            for v in variants:
                 o = {pre + f: np.full((n, d_), np.nan, np.float32) for pre in ("smpl_world_", "smpl_cam_")
                      for f, d_ in (("global_orient", 3), ("body_pose", 63), ("betas", 10), ("transl", 3))}
                 o.update(joints24_world=np.full((n, 24, 3), np.nan, np.float32), joints24_cam=np.full((n, 24, 3), np.nan, np.float32),
@@ -177,7 +186,7 @@ def main():
                 tim["vo"] += time.perf_counter() - t0
                 T_w2c[s_:e_] = T
                 angvel = compute_cam_angvel(torch.from_numpy(T[:, :3, :3]).float())
-                for v in ("half", "full"):
+                for v in variants:
                     o = res[v]
                     sc = crops[v][row[s_:e_]]
                     torch.cuda.synchronize(); t1 = time.perf_counter()
@@ -209,6 +218,8 @@ def main():
                       K=K.numpy(), fps=np.float32(fps), width=np.int32(W), height=np.int32(H))
         for v, dst, dst2 in (("half", out / "3_gvhmr" / vid / "gvhmr_fast.npz", out / "2_pose2d" / vid / "vitpose_h.npz"),
                              ("full", out / "_exp3_resolution" / vid / "gvhmr_full.npz", out / "_exp3_resolution" / vid / "pose2d_full.npz")):
+            if v not in variants:
+                continue
             o = dict(res[v])
             kp = o.pop("kp2d")
             meta = {"model": "gvhmr_fast", "crop_source": "0.5x frames (IMG_DS)" if v == "half" else "full-resolution frames",
@@ -226,7 +237,9 @@ def main():
               "wall_over_video": round(total / (n / fps), 3), "timing_sec": {k_: round(v_, 2) for k_, v_ in tim.items()},
               "torch_peak_gb": round(torch.cuda.max_memory_allocated() / 1024**3, 2), "nvsmi_peak_gb": round(mon.peak_gb, 2),
               "segments": len(segs), "vo_failed_segments": int(vo_failed.sum())}
-        (out / "_exp3_resolution" / vid / "stats.json").write_text(json.dumps(st, indent=1))
+        st_path = out / ("_exp3_resolution" if do_full else "3_gvhmr") / vid / "stats.json"
+        st_path.parent.mkdir(parents=True, exist_ok=True)
+        st_path.write_text(json.dumps(st, indent=1))
         print("[dual]", json.dumps(st), flush=True)
 
 
