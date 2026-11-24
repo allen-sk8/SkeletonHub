@@ -35,6 +35,8 @@ def main():
     ap.add_argument("--element", type=int, required=True, help="element number in the FineFS annotation (element1 = 1)")
     ap.add_argument("--pad", type=float, default=1.0, help="seconds added before and after the annotated time")
     ap.add_argument("--out", default="outputs/finefs_v2_world_view")
+    ap.add_argument("--fix", action="store_true", help="apply scripts/finefs_jump_height.py (re-ground + flight parabola); "
+                    "the plot then shows the original heights dashed")
     a = ap.parse_args()
     ann = json.loads((D / "annotation" / f"{a.id}.json").read_text())["executed_element"][f"element{a.element}"]
     g = np.load(D / "3_gvhmr" / a.id / "gvhmr_fast.npz")
@@ -47,11 +49,23 @@ def main():
     keep = np.where(seg == main_seg)[0]
     f0, f1 = f0 + keep[0], f0 + keep[-1] + 1                    # stay inside one segment (one world frame)
     J = g["joints24_world"][f0:f1].astype(float)
+    flights = []
+    if a.fix:
+        import sys
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from finefs_jump_height import find_flights, fix_vertical
+        full_ann = json.loads((D / "annotation" / f"{a.id}.json").read_text())["executed_element"]
+        flights = find_flights(g, full_ann, fps)
+        dy = fix_vertical(g, flights, fps)[f0:f1]
+        J0 = J.copy()
+        J[:, :, 1] += dy[:, None]
+        pel0, foot0 = J0[:, 0, 1], np.minimum(J0[:, 10, 1], J0[:, 11, 1])
+        ground0 = np.percentile(foot0, 5)
     pel, foot = J[:, 0, 1], np.minimum(J[:, 10, 1], J[:, 11, 1])
-    ground = np.percentile(foot, 5)
+    ground = 0.0 if a.fix else np.percentile(foot, 5)
     ctr = J[:, 0, [0, 2]].mean(0)
     half = max(1.2, np.abs(J[:, :, [0, 2]] - ctr).max() + 0.3)
-    name = f"{a.id}_e{a.element}_{ann['element']}"
+    name = f"{a.id}_e{a.element}_{ann['element']}" + ("_fixed" if a.fix else "")
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
     tmp = out / f"_{name}_frames"; tmp.mkdir(exist_ok=True)
     cap = cv2.VideoCapture(str(D / "video" / f"{a.id}.mp4"))
@@ -81,14 +95,22 @@ def main():
         ax.set_xlim(ctr[0] - half, ctr[0] + half); ax.set_ylim(ctr[1] - half, ctr[1] + half); ax.set_zlim(ground - 0.05, ground + 2.3)
         ax.set_box_aspect((2 * half, 2 * half, 2.35)); ax.view_init(elev=12, azim=-60)       # equal metres on all axes
         ax.set_xlabel("x (m)"); ax.set_ylabel("z (m)"); ax.set_zlabel("up (m)")
-        ax.set_title("GVHMR world (one segment, Y up)", fontsize=10)
+        ax.set_title("GVHMR world, re-grounded + flight parabola" if a.fix else "GVHMR world (one segment, Y up)", fontsize=10)
         ax2 = fig.add_axes([0.71, 0.12, 0.27, 0.78])
         ax2.axvspan(a0, a1, color="0.92", label="annotated element time")
-        ax2.plot(t_ax, (pel - ground) * 100, label="pelvis height", color="tab:blue")
-        ax2.plot(t_ax, (foot - ground) * 100, label="lowest foot height", color="tab:orange")
+        for fa, fb, r, how, el in flights:
+            if fb > f0 and fa < f1:
+                ax2.axvspan((fa - f0) / fps, (fb - f0) / fps, color="tab:green", alpha=0.25,
+                            label=f"flight ({'from rotation' if how == 'rotation' else 'typical time'})")
+        if a.fix:
+            ax2.plot(t_ax, (pel0 - ground0) * 100, "--", color="tab:blue", alpha=0.5, label="pelvis, GVHMR original")
+            ax2.plot(t_ax, (foot0 - ground0) * 100, "--", color="tab:orange", alpha=0.5, label="foot, GVHMR original")
+        ax2.plot(t_ax, (pel - ground) * 100, label="pelvis height" + (" (fixed)" if a.fix else ""), color="tab:blue")
+        ax2.plot(t_ax, (foot - ground) * 100, label="lowest foot height" + (" (fixed)" if a.fix else ""), color="tab:orange")
         ax2.axvline(t_ax[i], color="k", lw=1)
         ax2.set_xlabel("seconds"); ax2.set_ylabel("cm above ground (5th pct. of lowest foot)")
-        ax2.legend(fontsize=8, loc="upper right"); ax2.grid(alpha=0.3)
+        hh, ll = ax2.get_legend_handles_labels(); keep_ = dict(zip(ll, hh))
+        ax2.legend(keep_.values(), keep_.keys(), fontsize=7, loc="upper left"); ax2.grid(alpha=0.3)
         fig.savefig(tmp / f"{i:05d}.png")
     cap.release(); plt.close(fig)
     mp4 = out / f"{name}.mp4"
