@@ -103,7 +103,7 @@ def measure_jump(g, bj, kp, c, fps, video):
     t_on = j + (lift[j] - LIFT_ON) / (lift[j] - lift[j + 1])
     T = (t_on - t_off) / fps
     out.update(t_takeoff=f0 + t_off, t_landing=f0 + t_on, T_img=T, h_img=float(lift[pk]), h_from_T=G * T * T / 8,
-               apex_frame=f0 + pk, z=z, lift=lift, f0=f0)
+               apex_frame=f0 + pk, z=z, lift=lift, f0=f0, M=M, ice_y=line, ankle_x=x, mpp=mpp)
     if not 0.2 <= T <= 1.1:
         out["why"] = f"flight {T:.2f} s out of range"
         return out
@@ -167,7 +167,8 @@ def measure_video(vid):
     res = []
     for a, b, revs, how, el in find_flights(g, ann, fps):
         m = measure_jump(g, bj, kp, (a + b) // 2, fps, D / "video" / f"{vid}.mp4")
-        m.pop("lift", None)
+        for k in ("lift", "M", "ice_y", "ankle_x"):
+            m.pop(k, None)
         res.append({"id": vid, "element": el, "revs": revs, "rot_frames": [int(a), int(b)], "rot_how": how,
                     "T_rot": (b - a) / fps, **{k: (float(v) if isinstance(v, (np.floating, np.integer, float, int)) and not isinstance(v, bool) else v) for k, v in m.items()}})
     return res

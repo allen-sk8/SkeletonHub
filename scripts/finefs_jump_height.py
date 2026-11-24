@@ -130,11 +130,12 @@ def fix_vertical(g, flights, fps):
         ground = np.interp(idx, gi, median_filter(low[gi], size=max(3, int(fps)) | 1, mode="nearest"))
         dy[idx] = -ground
     pel = J[:, 0, 1] + dy
-    for a, b, r, how, el in flights:
+    for fl in flights:
+        a, b = fl[0], fl[1]
         if b - a < 3 or seg[a] < 0 or seg[a] != seg[b - 1]:
             continue
         T = (b - a) / fps
-        h = G * T * T / 8
+        h = fl[5] if len(fl) > 5 and fl[5] is not None else G * T * T / 8   # measured height (image method) if given
         s = np.arange(b - a) / (b - a - 1)
         p0, p1 = pel[a - 1] if a > 0 else pel[a], pel[b] if b < n else pel[b - 1]
         target = p0 + (p1 - p0) * s + 4 * h * s * (1 - s)

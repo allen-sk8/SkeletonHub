@@ -37,6 +37,9 @@ def main():
     ap.add_argument("--out", default="outputs/finefs_v2_world_view")
     ap.add_argument("--travel", action="store_true", help="with --fix: horizontal path from scripts/finefs_ground_track.py "
                     "(image-based travel over the ice) instead of GVHMR's; fixed view over the whole path")
+    ap.add_argument("--height", default="rotation", choices=["rotation", "image"],
+                    help="with --fix: flight height from body rotation + parabola (rotation) or measured in the image "
+                         "(scripts/finefs_jump_image.py); image also draws the measurement on the video")
     ap.add_argument("--fix", action="store_true", help="apply scripts/finefs_jump_height.py (re-ground + flight parabola); "
                     "the plot then shows the original heights dashed")
     a = ap.parse_args()
@@ -58,6 +61,21 @@ def main():
         from finefs_jump_height import find_flights, fix_vertical
         full_ann = json.loads((D / "annotation" / f"{a.id}.json").read_text())["executed_element"]
         flights = find_flights(g, full_ann, fps)
+        meas = []
+        if a.height == "image":
+            from finefs_jump_image import measure_jump
+            kp_all = np.load(D / "2_pose2d" / a.id / "vitpose_h.npz")["kp2d"]
+            new = []
+            for fl in flights:
+                if fl[1] > f0 - 50 and fl[0] < f1 + 50:          # only jumps near this clip are measured
+                    m = measure_jump(g, bj, kp_all, (fl[0] + fl[1]) // 2, fps, D / "video" / f"{a.id}.mp4")
+                    if m.get("lift") is not None:
+                        meas.append(m)
+                    if m["ok"]:
+                        new.append((int(round(m["t_takeoff"])), int(round(m["t_landing"])) + 1, fl[2], "image", fl[4], m["h_img"]))
+                        continue
+                new.append(fl)
+            flights = new
         dy = fix_vertical(g, flights, fps)[f0:f1]
         J0 = J.copy()
         J[:, :, 1] += dy[:, None]
@@ -85,7 +103,8 @@ def main():
     ctr = (lo_ + hi_) / 2
     hx, hz = [max(1.2, (hi_[k] - lo_[k]) / 2 + 0.6) for k in (0, 1)]   # rectangle around the path
     half = max(hx, hz)
-    name = f"{a.id}_e{a.element}_{ann['element']}" + ("_fixed" if a.fix else "") + ("_travel" if a.travel else "")
+    name = f"{a.id}_e{a.element}_{ann['element']}" + ("_fixed" if a.fix else "") + ("_travel" if a.travel else "") + \
+        ("_imgheight" if a.fix and a.height == "image" else "")
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
     tmp = out / f"_{name}_frames"; tmp.mkdir(exist_ok=True)
     cap = cv2.VideoCapture(str(D / "video" / f"{a.id}.mp4"))
@@ -101,6 +120,22 @@ def main():
             b = bj["tight_clean"][f0 + i]
             if bj["present"][f0 + i] and b is not None:
                 x1, y1, x2, y2 = map(int, b); cv2.rectangle(fr, (x1, y1), (x2, y2), (0, 255, 0), 3)
+            for m in meas if a.fix and a.height == "image" else []:   # ankle (red) and where it would be on the ice (green)
+                k = f0 + i - m["f0"]
+                if 0 <= k < len(m["ice_y"]):
+                    Minv = np.linalg.inv(m["M"][k])
+                    pa = Minv @ np.array([m["ankle_x"][k], m["ice_y"][k] - m["lift"][k] / m["mpp"], 1.0]); pa = pa[:2] / pa[2]
+                    pi_ = Minv @ np.array([m["ankle_x"][k], m["ice_y"][k], 1.0]); pi_ = pi_[:2] / pi_[2]
+                    if np.isfinite(pa).all() and np.isfinite(pi_).all():
+                        cv2.line(fr, tuple(map(int, pa)), tuple(map(int, pi_)), (255, 255, 0), 3)
+                        cv2.circle(fr, tuple(map(int, pi_)), 6, (0, 200, 0), -1)
+                        cv2.circle(fr, tuple(map(int, pa)), 6, (0, 0, 255), -1)
+                        cv2.putText(fr, f"{m['lift'][k] * 100:.0f} cm", (int(pa[0]) + 14, int((pa[1] + pi_[1]) / 2)),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 0), 2)
+            if a.fix and a.height == "image" and bj["present"][f0 + i] and bj["tight_clean"][f0 + i] is not None:
+                x1, y1, x2, y2 = map(int, bj["tight_clean"][f0 + i]); hh_ = y2 - y1      # zoom on the skater
+                cy_, cx_ = (y1 + y2) // 2, (x1 + x2) // 2; r_ = int(hh_ * 0.95)
+                fr = fr[max(0, cy_ - r_):cy_ + r_, max(0, cx_ - int(r_ * 1.3)):cx_ + int(r_ * 1.3)]
             ax0.imshow(cv2.cvtColor(fr, cv2.COLOR_BGR2RGB))
         ax0.set_title(f"video {a.id}  {ann['element']}  frame {f0 + i}  t={(f0 + i) / fps:.2f}s", fontsize=10)
         ax = fig.add_axes([0.25, -0.08, 0.48, 1.16], projection="3d")
@@ -127,10 +162,15 @@ def main():
                      fontsize=10)
         ax2 = fig.add_axes([0.75, 0.12, 0.2, 0.78])
         ax2.axvspan(a0, a1, color="0.92", label="annotated element time")
-        for fa, fb, r, how, el in flights:
+        for fl in flights:
+            fa, fb, how = fl[0], fl[1], fl[3]
             if fb > f0 and fa < f1:
                 ax2.axvspan((fa - f0) / fps, (fb - f0) / fps, color="tab:green", alpha=0.25,
-                            label=f"flight ({'from rotation' if how == 'rotation' else 'typical time'})")
+                            label=f"flight ({ {'rotation': 'from rotation', 'typical': 'typical time', 'image': 'measured in image'}[how]})")
+        for m in meas if a.fix and a.height == "image" else []:
+            tt = (np.arange(len(m["lift"])) + m["f0"] - f0) / fps
+            ax2.plot(tt, m["lift"] * 100, color="tab:cyan", lw=1.5, label="ankle lift measured in image")
+            ax2.set_ylim(bottom=-30)
         if a.fix:
             ax2.plot(t_ax, (pel0 - ground0) * 100, "--", color="tab:blue", alpha=0.5, label="pelvis, GVHMR original")
             ax2.plot(t_ax, (foot0 - ground0) * 100, "--", color="tab:orange", alpha=0.5, label="foot, GVHMR original")
