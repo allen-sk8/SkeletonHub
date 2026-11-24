@@ -36,7 +36,7 @@ def main():
     ap.add_argument("--pad", type=float, default=1.0, help="seconds added before and after the annotated time")
     ap.add_argument("--out", default="outputs/finefs_v2_world_view")
     ap.add_argument("--travel", action="store_true", help="with --fix: horizontal path from scripts/finefs_ground_track.py "
-                    "(image-based travel over the ice) instead of GVHMR's; the view follows the skater")
+                    "(image-based travel over the ice) instead of GVHMR's; fixed view over the whole path")
     ap.add_argument("--fix", action="store_true", help="apply scripts/finefs_jump_height.py (re-ground + flight parabola); "
                     "the plot then shows the original heights dashed")
     a = ap.parse_args()
@@ -72,8 +72,10 @@ def main():
         ground0 = np.percentile(foot0, 5)
     pel, foot = J[:, 0, 1], np.minimum(J[:, 10, 1], J[:, 11, 1])
     ground = 0.0 if a.fix else np.percentile(foot, 5)
-    ctr = J[:, 0, [0, 2]].mean(0)
-    half = max(1.2, np.abs(J[:, :, [0, 2]] - ctr).max() + 0.3)
+    lo_, hi_ = J[:, :, [0, 2]].reshape(-1, 2).min(0), J[:, :, [0, 2]].reshape(-1, 2).max(0)
+    ctr = (lo_ + hi_) / 2
+    hx, hz = [max(1.2, (hi_[k] - lo_[k]) / 2 + 0.6) for k in (0, 1)]   # rectangle around the path
+    half = max(hx, hz)
     name = f"{a.id}_e{a.element}_{ann['element']}" + ("_fixed" if a.fix else "") + ("_travel" if a.travel else "")
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
     tmp = out / f"_{name}_frames"; tmp.mkdir(exist_ok=True)
@@ -81,39 +83,40 @@ def main():
     cap.set(cv2.CAP_PROP_POS_FRAMES, f0)
     t_ax = (np.arange(f0, f1) - f0) / fps
     a0, a1 = (s * fps - f0) / fps, ((e + 1) * fps - f0) / fps
-    fig = plt.figure(figsize=(16, 5.4), dpi=80)
+    fig = plt.figure(figsize=(19, 6.4), dpi=80)
     for i in range(f1 - f0):
         ok, fr = cap.read()
         fig.clf()
-        ax0 = fig.add_axes([0.0, 0.05, 0.34, 0.9]); ax0.axis("off")
+        ax0 = fig.add_axes([0.0, 0.05, 0.27, 0.9]); ax0.axis("off")
         if ok:
             b = bj["tight_clean"][f0 + i]
             if bj["present"][f0 + i] and b is not None:
                 x1, y1, x2, y2 = map(int, b); cv2.rectangle(fr, (x1, y1), (x2, y2), (0, 255, 0), 3)
             ax0.imshow(cv2.cvtColor(fr, cv2.COLOR_BGR2RGB))
         ax0.set_title(f"video {a.id}  {ann['element']}  frame {f0 + i}  t={(f0 + i) / fps:.2f}s", fontsize=10)
-        ax = fig.add_axes([0.34, 0.02, 0.33, 0.96], projection="3d")
+        ax = fig.add_axes([0.25, -0.08, 0.48, 1.16], projection="3d")
         j = J[i]
         for c, p in enumerate(PARENTS):
             if p >= 0:
                 ax.plot([j[c, 0], j[p, 0]], [j[c, 2], j[p, 2]], [j[c, 1], j[p, 1]], color="tab:red" if c in LEFT else "tab:blue", lw=2.5)
         if a.travel:                                              # follow the skater; whole path drawn on the ice
-            ctr = J[i, 0, [0, 2]]; half = 2.0
-            pth = J[:, 0, [0, 2]].copy()
-            pth[(np.abs(pth - ctr) > half).any(1)] = np.nan       # only the part inside the view
-            ax.plot(pth[:, 0], pth[:, 1], np.full(len(pth), ground), color="0.75", lw=1)
-            ax.plot(pth[:i + 1, 0], pth[:i + 1, 1], np.full(i + 1, ground), color="gray", lw=1.5)
+            pth = J[:, 0, [0, 2]]                                  # fixed view over the whole path; travel is visible
+            ax.plot(pth[:, 0], pth[:, 1], np.full(len(pth), ground), color="0.8", lw=1)
+            ax.plot(pth[:i + 1, 0], pth[:i + 1, 1], np.full(i + 1, ground), color="k", lw=1.5)
         else:
             ax.plot(J[:i + 1, 0, 0], J[:i + 1, 0, 2], J[:i + 1, 0, 1] * 0 + ground, color="gray", lw=1)   # pelvis path on the ground
-        gx = np.linspace(ctr[0] - half, ctr[0] + half, 9); gz = np.linspace(ctr[1] - half, ctr[1] + half, 9)
-        for x in gx: ax.plot([x, x], [gz[0], gz[-1]], [ground, ground], color="0.85", lw=0.6)
-        for z in gz: ax.plot([gx[0], gx[-1]], [z, z], [ground, ground], color="0.85", lw=0.6)
-        ax.set_xlim(ctr[0] - half, ctr[0] + half); ax.set_ylim(ctr[1] - half, ctr[1] + half); ax.set_zlim(ground - 0.05, ground + 2.3)
-        ax.set_box_aspect((2 * half, 2 * half, 2.35)); ax.view_init(elev=12, azim=-60)       # equal metres on all axes
-        ax.set_xlabel("x (m)"); ax.set_ylabel("z (m)"); ax.set_zlabel("up (m)")
+        step = 1.0 if half < 5 else 2.0                           # ground grid every 1 m (2 m on long paths)
+        gx = np.arange(np.ceil((ctr[0] - hx) / step) * step, ctr[0] + hx + 1e-6, step)
+        gz = np.arange(np.ceil((ctr[1] - hz) / step) * step, ctr[1] + hz + 1e-6, step)
+        for x in gx: ax.plot([x, x], [ctr[1] - hz, ctr[1] + hz], [ground, ground], color="0.85", lw=0.6)
+        for z in gz: ax.plot([ctr[0] - hx, ctr[0] + hx], [z, z], [ground, ground], color="0.85", lw=0.6)
+        zt = 2.35                                                 # equal metres on all axes
+        ax.set_xlim(ctr[0] - hx, ctr[0] + hx); ax.set_ylim(ctr[1] - hz, ctr[1] + hz); ax.set_zlim(ground - 0.05, ground - 0.05 + zt)
+        ax.set_box_aspect((2 * hx, 2 * hz, zt), zoom=1.12 if a.travel else 1.0); ax.view_init(elev=25 if a.travel else 12, azim=-60)
+        ax.set_xlabel("x (m)"); ax.set_ylabel("z (m)"); ax.set_zlabel("up (m)" if not a.travel else ""); ax.set_zticks([0, 1, 2] if a.travel else ax.get_zticks())
         ax.set_title(("image-based travel, " if a.travel else "") + ("re-grounded + flight parabola" if a.fix else "GVHMR world (one segment, Y up)"),
                      fontsize=10)
-        ax2 = fig.add_axes([0.71, 0.12, 0.25, 0.78])
+        ax2 = fig.add_axes([0.75, 0.12, 0.2, 0.78])
         ax2.axvspan(a0, a1, color="0.92", label="annotated element time")
         for fa, fb, r, how, el in flights:
             if fb > f0 and fa < f1:
