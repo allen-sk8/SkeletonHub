@@ -155,3 +155,24 @@
 - 程式（新增，沒有改既有檔）：`preprocessors/track_person_offline.py`、`scripts/finefs_v2_compare_lock.py`、`scripts/finefs_v2_gvhmr_dual.py`、`scripts/finefs_v2_res_metrics.py`、`scripts/finefs_v2_export.py`。
 - 輸出：`outputs/finefs_v2_test/`（不進 git）。實驗中間結果：`_exp1_offline/`（離線認人，舊追蹤）、`_exp2_botsort_reid/`（外觀辨識開啟的追蹤與舊鎖定）、`_exp12_offline_on_reid/`（兩者疊加，就是 `1_tracking` 用的）、`_exp3_resolution/`（原解析度版的 3D 與 2D、`metrics.json`、每支 `stats.json`）；比對結果各在 `compare*.json`，不一致段落圖在 `sheets*/`。
 - GPU 紀錄：`docs/RUNNING_hmr_zoo.md`。全程只用 neverdie 0 號卡（TITAN RTX），實驗二約 50 分鐘、實驗三 42 分鐘，最後確認回到 9 MiB，tmux `skhub-v2test` 已關。
+
+## Output location (2026-11-24)
+
+Allen decided that SkeletonHub keeps only code and documents; the dataset results live with the dataset.
+The stage folders now sit directly in the original FineFS folder, next to `video/`, `annotation/`, `hybrik/` and the others:
+
+```
+/home/allen/datasets/FineFS/
+  0_video/      symbolic links <id>.mp4 -> video/<id>.mp4 (no copies)
+  1_tracking/   2_pose2d/   3_gvhmr/   4_flags/   5_preview/   (each with info.txt)
+  stages_info.txt   what the stage folders are, coordinate caveats, code version
+```
+
+The first 20 complete videos were copied there and checked byte for byte: the 10 of this test
+(36, 261, 819, 739, 980, 652, 187, 513, 521, 456) and the 10 finished by the stopped 100-video batch
+(2, 7, 12, 17, 56, 63, 66, 70, 71, 72). Format checks on all 20 in the new place pass (lengths agree, 2D matches 3D frames,
+previews decode); the summary is in `outputs/finefs_v2_batch100/_summary_20/check.json`.
+
+`scripts/run_finefs_v2_batch.sh` now writes stage folders to `R` (default `/home/allen/datasets/FineFS`) and keeps intermediate
+results, logs and the STOP flag in the work folder `W` (default `outputs/finefs_v2_batch100`). Experiment material
+(`_exp*`, `compare_videos`, the test `check.json`) stays in `outputs/finefs_v2_test` and is not part of the dataset.

@@ -166,14 +166,15 @@ def check(vid):
 
 
 INFO = {
-    "": """FineFS whole-match videos, v2 test output (10 videos, {date}). Stage folders, one sub-folder or file per video id
+    "": """FineFS whole-match videos, v2 stage output ({nvid} videos so far, info written {date}). Stage folders, one sub-folder or file per video id
 (= FineFS whole-match video number, /home/allen/datasets/FineFS/video/<id>.mp4).
-Code version: SkeletonHub commit {rev}. Report: SkeletonHub/docs/FINEFS_V2_TEST_2026-11-23.md
+Code version: SkeletonHub commit {rev}. Code: SkeletonHub/scripts/run_finefs_v2_batch.sh. Test report: SkeletonHub/docs/FINEFS_V2_TEST_2026-11-23.md
 Frame index t is the same in every stage (0 .. n_frames-1 of the original video, 25 fps). Absent frames: NaN / False / -1.
 COORDINATES: every 3D segment (3_gvhmr "segments") has its OWN world frame (GVHMR, Y up, metres); segments are split at camera
 cuts and at frames with no person, and world coordinates of different segments can NOT be joined. Camera translation from
 SimpleVO is up to an unknown scale (only its rotation is used by GVHMR). No 3D ground truth exists for these videos.
-Stages: 0_video 1_tracking 2_pose2d 3_gvhmr 4_flags 5_preview (each has its own info.txt). check.json = format checks.
+Stages: 0_video 1_tracking 2_pose2d 3_gvhmr 4_flags 5_preview (each has its own info.txt). 4_flags/<id>/check.json = per-video
+format checks (lengths of every stage agree with the video, preview decodes).
 """,
     "0_video": """Symbolic links to the original videos (not copied): <id>.mp4 -> /home/allen/datasets/FineFS/video/<id>.mp4
 """,
@@ -224,11 +225,12 @@ world frame (do not join segments). Crops cut from {crop_src}; SimpleVO on 0.5x 
 def write_info(target, tracker, lock_desc, crop_src):
     import datetime
     rev = git_rev()
+    nvid = sum(1 for d in (OUT / "3_gvhmr").iterdir() if (d / "gvhmr_fast.npz").exists())
     for st, txt in INFO.items():
-        p = OUT / st / "info.txt" if st else OUT / "info.txt"
+        p = OUT / st / "info.txt" if st else OUT / "stages_info.txt"  # root file named so it is clear next to other dataset folders
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(txt.format(date=datetime.date.today().isoformat(), rev=rev, target=target, tracker=tracker, lock_desc=lock_desc,
-                                crop_src=crop_src, closeup=CLOSEUP_H, ph=PREVIEW_H))
+                                crop_src=crop_src, closeup=CLOSEUP_H, ph=PREVIEW_H, nvid=nvid))
 
 
 def main():
@@ -239,6 +241,8 @@ def main():
     ap.add_argument("--tracks-from")
     ap.add_argument("--root", default=None, help="output root (default outputs/finefs_v2_test)")
     ap.add_argument("--no-summary", action="store_true", help="stage4: only flags/preview/check per video, no check.json/info.txt")
+    ap.add_argument("--summary-dir", default=None, help="stage4: where the batch summary check.json goes (default: --root); "
+                    "set it to a SkeletonHub work folder so the dataset folder only holds stage folders")
     ap.add_argument("--n-total", type=int, default=1167)
     ap.add_argument("--hours-total", type=float, default=65.3)
     a = ap.parse_args()
@@ -274,7 +278,9 @@ def main():
                "gb_full_batch_by_count": {k: round(sum(c["mb"][k] for c in checks) / len(checks) * a.n_total / 1000, 1) for k in keys},
                "gb_full_batch_by_hours": {k: round(per_hour[k] * a.hours_total / 1000, 1) for k in keys},
                "videos": checks}
-    (OUT / "check.json").write_text(json.dumps(summary, indent=1))
+    sd = Path(a.summary_dir) if a.summary_dir else OUT
+    sd.mkdir(parents=True, exist_ok=True)
+    (sd / "check.json").write_text(json.dumps(summary, indent=1))
     print(json.dumps({k: v for k, v in summary.items() if k != "videos"}, indent=1))
 
 
