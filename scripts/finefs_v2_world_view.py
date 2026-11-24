@@ -35,6 +35,8 @@ def main():
     ap.add_argument("--element", type=int, required=True, help="element number in the FineFS annotation (element1 = 1)")
     ap.add_argument("--pad", type=float, default=1.0, help="seconds added before and after the annotated time")
     ap.add_argument("--out", default="outputs/finefs_v2_world_view")
+    ap.add_argument("--travel", action="store_true", help="with --fix: horizontal path from scripts/finefs_ground_track.py "
+                    "(image-based travel over the ice) instead of GVHMR's; the view follows the skater")
     ap.add_argument("--fix", action="store_true", help="apply scripts/finefs_jump_height.py (re-ground + flight parabola); "
                     "the plot then shows the original heights dashed")
     a = ap.parse_args()
@@ -59,13 +61,20 @@ def main():
         dy = fix_vertical(g, flights, fps)[f0:f1]
         J0 = J.copy()
         J[:, :, 1] += dy[:, None]
+        if a.travel:
+            from finefs_ground_track import ground_velocity
+            bj_ = dict(bj); bj_["id"] = a.id
+            vel, _ = ground_velocity(g, bj_, f0, f1, flights=flights)
+            path = J[0, 0, [0, 2]] + np.cumsum(np.vstack([[0, 0], vel[1:]]), axis=0) / fps
+            J[:, :, [0, 2]] += (path - J[:, 0, [0, 2]])[:, None, :]
+            speed = np.linalg.norm(vel, axis=1)
         pel0, foot0 = J0[:, 0, 1], np.minimum(J0[:, 10, 1], J0[:, 11, 1])
         ground0 = np.percentile(foot0, 5)
     pel, foot = J[:, 0, 1], np.minimum(J[:, 10, 1], J[:, 11, 1])
     ground = 0.0 if a.fix else np.percentile(foot, 5)
     ctr = J[:, 0, [0, 2]].mean(0)
     half = max(1.2, np.abs(J[:, :, [0, 2]] - ctr).max() + 0.3)
-    name = f"{a.id}_e{a.element}_{ann['element']}" + ("_fixed" if a.fix else "")
+    name = f"{a.id}_e{a.element}_{ann['element']}" + ("_fixed" if a.fix else "") + ("_travel" if a.travel else "")
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
     tmp = out / f"_{name}_frames"; tmp.mkdir(exist_ok=True)
     cap = cv2.VideoCapture(str(D / "video" / f"{a.id}.mp4"))
@@ -88,15 +97,23 @@ def main():
         for c, p in enumerate(PARENTS):
             if p >= 0:
                 ax.plot([j[c, 0], j[p, 0]], [j[c, 2], j[p, 2]], [j[c, 1], j[p, 1]], color="tab:red" if c in LEFT else "tab:blue", lw=2.5)
-        ax.plot(J[:i + 1, 0, 0], J[:i + 1, 0, 2], J[:i + 1, 0, 1] * 0 + ground, color="gray", lw=1)   # pelvis path on the ground
+        if a.travel:                                              # follow the skater; whole path drawn on the ice
+            ctr = J[i, 0, [0, 2]]; half = 2.0
+            pth = J[:, 0, [0, 2]].copy()
+            pth[(np.abs(pth - ctr) > half).any(1)] = np.nan       # only the part inside the view
+            ax.plot(pth[:, 0], pth[:, 1], np.full(len(pth), ground), color="0.75", lw=1)
+            ax.plot(pth[:i + 1, 0], pth[:i + 1, 1], np.full(i + 1, ground), color="gray", lw=1.5)
+        else:
+            ax.plot(J[:i + 1, 0, 0], J[:i + 1, 0, 2], J[:i + 1, 0, 1] * 0 + ground, color="gray", lw=1)   # pelvis path on the ground
         gx = np.linspace(ctr[0] - half, ctr[0] + half, 9); gz = np.linspace(ctr[1] - half, ctr[1] + half, 9)
         for x in gx: ax.plot([x, x], [gz[0], gz[-1]], [ground, ground], color="0.85", lw=0.6)
         for z in gz: ax.plot([gx[0], gx[-1]], [z, z], [ground, ground], color="0.85", lw=0.6)
         ax.set_xlim(ctr[0] - half, ctr[0] + half); ax.set_ylim(ctr[1] - half, ctr[1] + half); ax.set_zlim(ground - 0.05, ground + 2.3)
         ax.set_box_aspect((2 * half, 2 * half, 2.35)); ax.view_init(elev=12, azim=-60)       # equal metres on all axes
         ax.set_xlabel("x (m)"); ax.set_ylabel("z (m)"); ax.set_zlabel("up (m)")
-        ax.set_title("GVHMR world, re-grounded + flight parabola" if a.fix else "GVHMR world (one segment, Y up)", fontsize=10)
-        ax2 = fig.add_axes([0.71, 0.12, 0.27, 0.78])
+        ax.set_title(("image-based travel, " if a.travel else "") + ("re-grounded + flight parabola" if a.fix else "GVHMR world (one segment, Y up)"),
+                     fontsize=10)
+        ax2 = fig.add_axes([0.71, 0.12, 0.25, 0.78])
         ax2.axvspan(a0, a1, color="0.92", label="annotated element time")
         for fa, fb, r, how, el in flights:
             if fb > f0 and fa < f1:
@@ -109,6 +126,11 @@ def main():
         ax2.plot(t_ax, (foot - ground) * 100, label="lowest foot height" + (" (fixed)" if a.fix else ""), color="tab:orange")
         ax2.axvline(t_ax[i], color="k", lw=1)
         ax2.set_xlabel("seconds"); ax2.set_ylabel("cm above ground (5th pct. of lowest foot)")
+        if a.travel:
+            ax3 = ax2.twinx()
+            ax3.plot(t_ax, speed, color="tab:purple", lw=1, label="speed over the ice")
+            ax3.set_ylim(0, 12); ax3.set_ylabel("speed over the ice (m/s)", color="tab:purple")
+            ax3.text(0.98, 0.97, f"speed {speed[i]:.1f} m/s", transform=ax3.transAxes, ha="right", va="top", color="tab:purple")
         hh, ll = ax2.get_legend_handles_labels(); keep_ = dict(zip(ll, hh))
         ax2.legend(keep_.values(), keep_.keys(), fontsize=7, loc="upper left"); ax2.grid(alpha=0.3)
         fig.savefig(tmp / f"{i:05d}.png")
