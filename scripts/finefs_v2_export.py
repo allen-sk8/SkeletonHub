@@ -1,8 +1,8 @@
-"""FineFS v2 test output: stage folders 0_video, 1_tracking, 4_flags, 5_preview, info.txt in every stage folder, and format
+"""FineFS v2 test output: stage folders 1_tracking, 4_flags, 5_preview, info.txt in every stage folder, and format
 checks. 2_pose2d and 3_gvhmr are written by scripts/finefs_v2_gvhmr_dual.py. CPU only (cv2 + ffmpeg), any env with cv2.
 
   python scripts/finefs_v2_export.py stage1 --ids 36,261 --boxes-from outputs/finefs_v2_test/_exp1_offline \
-         --tracks-from outputs/finefs_full_test            # 0_video links + 1_tracking (before the GPU stage)
+         --tracks-from outputs/finefs_full_test            # 1_tracking (before the GPU stage)
   python scripts/finefs_v2_export.py stage4 --ids ...      # 4_flags, 5_preview, info.txt, check.json (after the GPU stage)
 """
 from __future__ import annotations
@@ -38,11 +38,7 @@ def git_rev():
 
 
 def stage1(ids, boxes_from: Path, tracks_from: Path):
-    (OUT / "0_video").mkdir(parents=True, exist_ok=True)
-    for vid in ids:
-        link = OUT / "0_video" / f"{vid}.mp4"
-        if not link.exists():
-            os.symlink(VIDEO_DIR / f"{vid}.mp4", link)
+    for vid in ids:  # stage 0 = the original videos in VIDEO_DIR (no links or copies)
         d = OUT / "1_tracking" / vid
         d.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(boxes_from / vid / "boxes.json", d / "boxes.json")
@@ -173,10 +169,9 @@ Frame index t is the same in every stage (0 .. n_frames-1 of the original video,
 COORDINATES: every 3D segment (3_gvhmr "segments") has its OWN world frame (GVHMR, Y up, metres); segments are split at camera
 cuts and at frames with no person, and world coordinates of different segments can NOT be joined. Camera translation from
 SimpleVO is up to an unknown scale (only its rotation is used by GVHMR). No 3D ground truth exists for these videos.
-Stages: 0_video 1_tracking 2_pose2d 3_gvhmr 4_flags 5_preview (each has its own info.txt). 4_flags/<id>/check.json = per-video
+VIDEOS: stage 0 is the original FineFS folder video/ (<id>.mp4); it is not duplicated. Numbering starts at 1 on purpose.
+Stages: 1_tracking 2_pose2d 3_gvhmr 4_flags 5_preview (each has its own info.txt). 4_flags/<id>/check.json = per-video
 format checks (lengths of every stage agree with the video, preview decodes).
-""",
-    "0_video": """Symbolic links to the original videos (not copied): <id>.mp4 -> /home/allen/datasets/FineFS/video/<id>.mp4
 """,
     "1_tracking": """Person tracking and lock-on of the skater. Per video <id>/:
   boxes.json   width, height, n_frames, fps; present[t] (is the skater in frame t); shot_cuts [[first frame of new shot, diff]];
@@ -243,6 +238,7 @@ def main():
     ap.add_argument("--no-summary", action="store_true", help="stage4: only flags/preview/check per video, no check.json/info.txt")
     ap.add_argument("--summary-dir", default=None, help="stage4: where the batch summary check.json goes (default: --root); "
                     "set it to a SkeletonHub work folder so the dataset folder only holds stage folders")
+    ap.add_argument("--fail-dir", default=None, help="record per-video failures here and go on (see finefs_failguard.py)")
     ap.add_argument("--n-total", type=int, default=1167)
     ap.add_argument("--hours-total", type=float, default=65.3)
     a = ap.parse_args()
@@ -254,15 +250,28 @@ def main():
         stage1(ids, Path(a.boxes_from), Path(a.tracks_from))
         return
     checks = []
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from finefs_failguard import FailGuard
+    guard = FailGuard(a.fail_dir, "export")
     for vid in ids:
-        cl = flags(vid)
-        if not (OUT / "5_preview" / f"{vid}.mp4").exists():
-            preview(vid, cl)
-        c = check(vid)
+        if not (OUT / "3_gvhmr" / vid / "gvhmr_fast.npz").exists():
+            print(f"[export] {vid}: no 3D result, skipped", flush=True)
+            continue
+        if guard.skip(vid):
+            continue
+        try:
+            cl = flags(vid)
+            if not (OUT / "5_preview" / f"{vid}.mp4").exists():
+                preview(vid, cl)
+            c = check(vid)
+        except Exception as e:  # noqa: BLE001
+            guard.failed(vid, e)
+            continue
+        guard.ok()
         (OUT / "4_flags" / vid / "check.json").write_text(json.dumps(c, indent=1))
         checks.append(c)
         print("[check]", json.dumps(c), flush=True)
-    if a.no_summary:
+    if a.no_summary or not checks:
         return
     bj = json.loads((OUT / "1_tracking" / ids[0] / "boxes.json").read_text())
     write_info(bj.get("target"), bj.get("tracker"),

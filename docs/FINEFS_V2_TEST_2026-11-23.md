@@ -159,11 +159,12 @@
 ## Output location (2026-11-24)
 
 Allen decided that SkeletonHub keeps only code and documents; the dataset results live with the dataset.
-The stage folders now sit directly in the original FineFS folder, next to `video/`, `annotation/`, `hybrik/` and the others:
+The stage folders now sit directly in the original FineFS folder, next to `video/` and `annotation/`
+(the old `hybrik/`, `yolo/`, `skeleton/`, `skeleton_new/` folders were deleted on 2026-11-24 with Allen's consent; the zip files remain):
 
 ```
 /home/allen/datasets/FineFS/
-  0_video/      symbolic links <id>.mp4 -> video/<id>.mp4 (no copies)
+  video/        the original videos <id>.mp4 (stage 0 is this folder; the earlier 0_video links were removed as duplicates)
   1_tracking/   2_pose2d/   3_gvhmr/   4_flags/   5_preview/   (each with info.txt)
   stages_info.txt   what the stage folders are, coordinate caveats, code version
 ```

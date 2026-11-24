@@ -40,6 +40,7 @@ def load_finefs(clip, kind17=False):
     sel = {c['clip']: c for c in json.load(open(FINEFS_SEL))['clips']}[clip]
     s, e = sel['frame_start'], sel['frame_end']
     root = '/home/allen/datasets/FineFS'
+    # 2026-11-24: FineFS/hybrik/ and FineFS/skeleton/ were deleted (已刪). skeleton.zip remains; hybrik has no copy.
     if not kind17:
         return np.load(f"{root}/hybrik/{sel['video']}/smpl24.npy")[s:e].astype(np.float32)
     from utils.axis_converter import convert_joints_z_to_y

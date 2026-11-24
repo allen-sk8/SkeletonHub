@@ -299,6 +299,7 @@ Allen 看過第一批影片後，認為第 6 欄（手腕修正加放鬆手型�
 | | 官方骨架 | HybrIK 偵測的骨架 |
 | :--- | :--- | :--- |
 | 位置 | `~/datasets/FineFS/skeleton/<影片編號>.npz` 的 `reconstruction` | `~/datasets/FineFS/hybrik/<影片編號>/smpl24.npy` |
+| 現況（2026-11-24） | **已刪**：`skeleton/` 資料夾已刪，原檔還在 `~/datasets/FineFS/skeleton.zip` | **已刪**：`hybrik/` 資料夾已刪，沒有壓縮檔留存 |
 | 關節數與定義 | 17 點，Human3.6M 那一套 | 24 點，SMPL 的 24 關節 |
 | 座標 | Z 軸朝上，公尺 | Y 軸朝上，公尺 |
 | 幀率 | 25 fps，和影片逐幀對齊 | 同左 |

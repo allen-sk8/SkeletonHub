@@ -27,7 +27,10 @@ def main():
     ap.add_argument("--gpu-mem-gb", type=float, default=6.0)
     ap.add_argument("--reuse-tracks", action="store_true", help="redo only the lock/presence step on saved tracks.txt (ignores existing boxes.json)")
     ap.add_argument("--tracker", default="botsort-reid", choices=["botsort", "botsort-reid"])
+    ap.add_argument("--fail-dir", default=None, help="record per-video failures here and go on (see finefs_failguard.py)")
     a = ap.parse_args()
+    from finefs_failguard import FailGuard
+    guard = FailGuard(a.fail_dir, "track")
     import torch
     from preprocessors.track_person import track_video
 
@@ -36,21 +39,29 @@ def main():
         if (d / "boxes.json").exists() and not a.reuse_tracks:
             print(f"[track] {vid}: exists, skipped", flush=True)
             continue
-        video = Path(a.video_dir) / f"{vid}.mp4"
-        torch.cuda.reset_peak_memory_stats()
-        t0 = time.perf_counter()
-        p = track_video(video, d, detector="medium", tracker=a.tracker, target="lock", device=a.device,
-                        gpu_mem_gb=a.gpu_mem_gb, preview=False, reuse_tracks=a.reuse_tracks)
-        wall = time.perf_counter() - t0
-        n = p["n_frames"]
-        st = {"id": vid, "frames": n, "fps": p["fps"], "video_sec": n / p["fps"], "wall_sec": round(wall, 1),
-              "detect_sec": p.get("det_seconds"), "track_sec": p.get("track_seconds"), "lock_sec": p.get("lock_seconds"),
-              "wall_over_video": round(wall / (n / p["fps"]), 2),
-              "torch_peak_gb": round(torch.cuda.max_memory_allocated() / 1024**3, 2),
-              "present_ratio": round(sum(p["present"]) / n, 4), "n_shot_cuts": len(p.get("shot_cuts", [])),
-              "no_person": bool(p.get("no_person"))}
-        (d / "track_stats.json").write_text(json.dumps(st, indent=1))
-        print("[track]", json.dumps(st), flush=True)
+        if guard.skip(vid):
+            continue
+        try:
+            video = Path(a.video_dir) / f"{vid}.mp4"
+            torch.cuda.reset_peak_memory_stats()
+            t0 = time.perf_counter()
+            p = track_video(video, d, detector="medium", tracker=a.tracker, target="lock", device=a.device,
+                            gpu_mem_gb=a.gpu_mem_gb, preview=False, reuse_tracks=a.reuse_tracks)
+            wall = time.perf_counter() - t0
+            n = p["n_frames"]
+            st = {"id": vid, "frames": n, "fps": p["fps"], "video_sec": n / p["fps"], "wall_sec": round(wall, 1),
+                  "detect_sec": p.get("det_seconds"), "track_sec": p.get("track_seconds"), "lock_sec": p.get("lock_seconds"),
+                  "wall_over_video": round(wall / (n / p["fps"]), 2),
+                  "torch_peak_gb": round(torch.cuda.max_memory_allocated() / 1024**3, 2),
+                  "present_ratio": round(sum(p["present"]) / n, 4), "n_shot_cuts": len(p.get("shot_cuts", [])),
+                  "no_person": bool(p.get("no_person"))}
+            (d / "track_stats.json").write_text(json.dumps(st, indent=1))
+            print("[track]", json.dumps(st), flush=True)
+
+        except Exception as e:  # noqa: BLE001
+            guard.failed(vid, e)
+            continue
+        guard.ok()
 
 
 if __name__ == "__main__":
