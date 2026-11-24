@@ -72,12 +72,16 @@ ELEV_DEG = 20.0        # assumed camera elevation (main broadcast camera high in
 MAX_SPEED = 12.0       # m/s; faster than any skater: scaled down to this
 
 
-def ground_velocity(g, bj, f0, f1, flights=(), video=None, elev_deg=ELEV_DEG):
+def ground_velocity(g, bj, f0, f1, flights=(), video=None, elev_deg=ELEV_DEG, hom=None):
     """Per-frame horizontal velocity (T,2) [world x, world z] in m/s for frames f0..f1-1 (one GVHMR segment)."""
     fps = float(g["fps"])
     f = float(g["K"][0, 0])
     boxes = [bj["tight_clean"][t] if bj["present"][t] else None for t in range(len(bj["present"]))]
-    Hs, inl = background_homographies(video or D / "video" / f"{bj.get('id', '')}.mp4", boxes, f0, f1)
+    if hom is not None:                                          # precomputed for the whole video: (H (N,3,3), inliers (N,))
+        Hs, inl = hom[0][f0:f1].copy(), hom[1][f0:f1].copy()
+        Hs[0] = np.nan                                           # H[f0] maps f0-1 -> f0: outside this segment
+    else:
+        Hs, inl = background_homographies(video or D / "video" / f"{bj.get('id', '')}.mp4", boxes, f0, f1)
     n = f1 - f0
     gp = np.full((n, 2), np.nan)                                 # ground point: bottom centre of the skater box
     for k in range(n):

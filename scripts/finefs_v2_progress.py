@@ -58,6 +58,8 @@ def main():
              f"- Failed: {len(failed)}" + (" (" + ", ".join(f"{v} {s}" for v, s in list(failed.items())[:20]) + ")" if failed else ""),
              f"- No skater found (skipped on purpose): {len(no_person)}" + (f" ({', '.join(no_person[:20])})" if no_person else ""),
              f"- Left: {left}; estimated time left: {eta}",
+             f"- Stage 6 (skater on the ice, CPU): {sum((R / '6_world' / v / 'world.npz').exists() for v in ids)} done, "
+             f"{len(list((W / '_failed6').glob('*.txt'))) if (W / '_failed6').exists() else 0} failed (details {W}/_failed6/)",
              f"- Log: {W}/batch.log, failure details: {W}/_failed/", ""]
     (W / "PROGRESS.md").write_text("\n".join(lines))
     print("\n".join(lines))

@@ -35,13 +35,16 @@ LIFT_ON = 0.05        # m, foot counted as off the ice above this
 HALF_WIN = 1.2        # s, window around the fastest-rotation frame
 
 
-def measure_jump(g, bj, kp, c, fps, video):
+def measure_jump(g, bj, kp, c, fps, video, hom=None):
     f = float(g["K"][0, 0])
     n_all = len(g["present"])
     w = int(HALF_WIN * fps)
     f0, f1 = max(0, c - w), min(n_all, c + w + 1)
     boxes = [bj["tight_clean"][t] if bj["present"][t] else None for t in range(len(bj["present"]))]
-    Hs, _ = background_homographies(video, boxes, f0, f1)
+    if hom is not None:                                          # precomputed for the whole video
+        Hs = hom[0][f0:f1].copy(); Hs[0] = np.nan
+    else:
+        Hs, _ = background_homographies(video, boxes, f0, f1)
     n = f1 - f0
     r = c - f0
     out = {"ok": False}
