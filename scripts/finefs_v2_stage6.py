@@ -17,6 +17,8 @@ Per video writes <root>/6_world/<id>/world.npz and jumps.json (written as .part,
 """
 from __future__ import annotations
 
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = ""     # CPU only: an imported library otherwise opens a context on the default card
 import argparse
 import json
 import os
