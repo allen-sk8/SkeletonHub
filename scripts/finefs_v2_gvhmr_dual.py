@@ -232,13 +232,19 @@ def main():
                         "vo_source": "0.5x frames", "fp16": True, "flip_test": False, "box_key": "padded_112", "min_seg": MIN_SEG,
                         "n_frames": n, "n_run": m, "n_segments": len(segs), "n_vo_failed_segments": int(vo_failed.sum()),
                         "vo_errors": vo_errors[:10], "vo_pair_fail_frac": vo_frac, "video": str(video), "boxes": str(bj_path)}
+                # write to *.part then rename, 2D first: the 3D file is the "done" marker on resume (safe to interrupt)
                 dst.parent.mkdir(parents=True, exist_ok=True)
-                np.savez_compressed(dst, meta_json=np.asarray(json.dumps(meta)), **common, **o)
                 dst2.parent.mkdir(parents=True, exist_ok=True)
-                np.savez_compressed(dst2, kp2d=kp, present=use, fps=np.float32(fps), width=np.int32(W), height=np.int32(H),
+                tmp1, tmp2 = dst.with_name(dst.name + ".part"), dst2.with_name(dst2.name + ".part")
+                with open(tmp2, "wb") as fh:
+                    np.savez_compressed(fh, kp2d=kp, present=use, fps=np.float32(fps), width=np.int32(W), height=np.int32(H),
                                     meta_json=np.asarray(json.dumps({"model": "ViTPose-H (GVHMR vitpose-h-multi-coco), fp16, no flip test",
                                                                      "crop_source": meta["crop_source"], "layout": "COCO-17 [x_px, y_px, conf]",
                                                                      "box_key": "padded_112", "video": str(video)})))
+                with open(tmp1, "wb") as fh:
+                    np.savez_compressed(fh, meta_json=np.asarray(json.dumps(meta)), **common, **o)
+                os.replace(tmp2, dst2)
+                os.replace(tmp1, dst)
             st = {"id": vid, "frames": n, "video_sec": round(n / fps, 2), "n_run": m, "wall_sec": round(total, 1),
                   "wall_over_video": round(total / (n / fps), 3), "timing_sec": {k_: round(v_, 2) for k_, v_ in tim.items()},
                   "torch_peak_gb": round(torch.cuda.max_memory_allocated() / 1024**3, 2), "nvsmi_peak_gb": round(mon.peak_gb, 2),

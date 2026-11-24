@@ -81,7 +81,7 @@ def preview(vid, closeup):
     d.mkdir(parents=True, exist_ok=True)
     p = subprocess.Popen(["ffmpeg", "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{size[0]}x{size[1]}",
                           "-r", f"{fps:.3f}", "-i", "-", "-c:v", "libx264", "-preset", "veryfast", "-crf", "28", "-pix_fmt", "yuv420p",
-                          str(d / f"{vid}.mp4")], stdin=subprocess.PIPE)
+                          str(d / f"{vid}.part.mp4")], stdin=subprocess.PIPE)   # renamed when complete (safe to interrupt)
     cap = cv2.VideoCapture(str(VIDEO_DIR / f"{vid}.mp4"))
     t = 0
     while t < n:
@@ -117,7 +117,9 @@ def preview(vid, closeup):
         t += 1
     cap.release()
     p.stdin.close()
-    p.wait()
+    if p.wait() != 0:
+        raise RuntimeError(f"ffmpeg failed writing preview {vid}")
+    os.replace(d / f"{vid}.part.mp4", d / f"{vid}.mp4")
 
 
 def ffprobe_frames(path):
