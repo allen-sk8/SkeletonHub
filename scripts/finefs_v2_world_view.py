@@ -72,6 +72,15 @@ def main():
         ground0 = np.percentile(foot0, 5)
     pel, foot = J[:, 0, 1], np.minimum(J[:, 10, 1], J[:, 11, 1])
     ground = 0.0 if a.fix else np.percentile(foot, 5)
+    # Display: matplotlib axes (X, Y, Z) = world (x, -z, y). Plotting (x, z, y) would be a mirror image (left-handed).
+    J[:, :, 2] *= -1
+    # Look from the broadcast camera's side, so left/right on screen matches the video:
+    # camera optical axis in world = third row of R_c<-w = R_cam_body @ R_world_body^T (mean over the clip).
+    from scipy.spatial.transform import Rotation as Rot
+    Rw = Rot.from_rotvec(g["smpl_world_global_orient"][f0:f1]).as_matrix()
+    Rc = Rot.from_rotvec(g["smpl_cam_global_orient"][f0:f1]).as_matrix()
+    fwd = (Rc @ np.transpose(Rw, (0, 2, 1)))[:, 2, :].mean(0)
+    azim = float(np.degrees(np.arctan2(fwd[2], -fwd[0])))       # viewer behind the camera, in display coordinates
     lo_, hi_ = J[:, :, [0, 2]].reshape(-1, 2).min(0), J[:, :, [0, 2]].reshape(-1, 2).max(0)
     ctr = (lo_ + hi_) / 2
     hx, hz = [max(1.2, (hi_[k] - lo_[k]) / 2 + 0.6) for k in (0, 1)]   # rectangle around the path
@@ -112,8 +121,8 @@ def main():
         for z in gz: ax.plot([ctr[0] - hx, ctr[0] + hx], [z, z], [ground, ground], color="0.85", lw=0.6)
         zt = 2.35                                                 # equal metres on all axes
         ax.set_xlim(ctr[0] - hx, ctr[0] + hx); ax.set_ylim(ctr[1] - hz, ctr[1] + hz); ax.set_zlim(ground - 0.05, ground - 0.05 + zt)
-        ax.set_box_aspect((2 * hx, 2 * hz, zt), zoom=1.12 if a.travel else 1.0); ax.view_init(elev=25 if a.travel else 12, azim=-60)
-        ax.set_xlabel("x (m)"); ax.set_ylabel("z (m)"); ax.set_zlabel("up (m)" if not a.travel else ""); ax.set_zticks([0, 1, 2] if a.travel else ax.get_zticks())
+        ax.set_box_aspect((2 * hx, 2 * hz, zt), zoom=1.12 if a.travel else 1.0); ax.view_init(elev=25 if a.travel else 12, azim=azim)
+        ax.set_xlabel("x (m)"); ax.set_ylabel("-z (m)"); ax.set_zlabel("up (m)" if not a.travel else ""); ax.set_zticks([0, 1, 2] if a.travel else ax.get_zticks())
         ax.set_title(("image-based travel, " if a.travel else "") + ("re-grounded + flight parabola" if a.fix else "GVHMR world (one segment, Y up)"),
                      fontsize=10)
         ax2 = fig.add_axes([0.75, 0.12, 0.2, 0.78])
