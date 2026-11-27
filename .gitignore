@@ -27,3 +27,5 @@ venv/
 !/common_models/**/
 !/common_models/**/*.md
 !/common_models/**/.gitkeep
+# Run outputs (videos, frames, tables) stay on disk, not in git
+/outputs/
