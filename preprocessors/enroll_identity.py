@@ -99,6 +99,46 @@ def part_boxes(k, box):
     return (min(xs) - pad, sy, max(xs) + pad, hy), (min(xs) - pad, hy, max(xs) + pad, ky)
 
 
+def degrade_frame(img, factor: float):
+    """Shrink the whole frame by `factor` and enlarge it back (a smaller, blurrier person at the same box coordinates)."""
+    H, W = img.shape[:2]
+    return cv2.resize(cv2.resize(img, (max(1, int(W * factor)), max(1, int(H * factor))), interpolation=cv2.INTER_AREA), (W, H))
+
+
+def row_colors(video: Path, frames, boxes, pose_npz: Path, degrade: float = 0.0, gray: bool = False) -> dict:
+    """Upper / lower body colour histograms (as in extract_features) for chosen rows only, e.g. the enrollment samples,
+    optionally on degraded frames (degrade_frame) or grey-level frames. Returns {"up": (N, 32), "lo": (N, 32)} in input order."""
+    frames = np.asarray(frames).astype(int)
+    boxes = np.asarray(boxes, np.float32)
+    pose = np.load(pose_npz)
+    pf, pb, pk = pose["frame"], pose["box"], pose["kpt"]
+    up = np.zeros((len(frames), 32), np.float32); lo = np.zeros((len(frames), 32), np.float32)
+    order = np.argsort(frames, kind="stable")
+    cap = cv2.VideoCapture(str(video))
+    n, p = 0, 0
+    while p < len(order):
+        ok, img = cap.read()
+        if not ok:
+            break
+        if frames[order[p]] == n:
+            if degrade:
+                img = degrade_frame(img, degrade)
+            if gray:
+                img = cv2.cvtColor(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), cv2.COLOR_GRAY2BGR)
+            pm = pf == n
+            kk, bb = pk[pm], pb[pm]
+            while p < len(order) and frames[order[p]] == n:
+                i = order[p]
+                m = iou_mat(boxes[i:i + 1], bb)[0] if len(bb) else np.zeros(0)
+                k = kk[int(m.argmax())] if len(m) and m.max() > 0.5 else None
+                u, l_ = part_boxes(k, boxes[i])
+                up[i], lo[i] = hsv_hist(img, u), hsv_hist(img, l_)
+                p += 1
+        n += 1
+    cap.release()
+    return dict(up=up, lo=lo)
+
+
 def extract_features(video: Path, track_dir: Path, pose_npz: Path, device: str, degrade: float = 0.0) -> dict:
     """Per tracked box on every frame that has keypoints: two OSNet embeddings, view, upright, occlusion, colours.
     degrade > 0: each frame is shrunk by this factor and enlarged back first (simulates a smaller, blurrier person)."""
@@ -128,7 +168,7 @@ def extract_features(video: Path, track_dir: Path, pose_npz: Path, device: str, 
             break
         if n in pose_frames and n in by_frame:
             if degrade:
-                img = cv2.resize(cv2.resize(img, (int(W * degrade), int(H * degrade)), interpolation=cv2.INTER_AREA), (W, H))
+                img = degrade_frame(img, degrade)
             idx = by_frame[n]
             tb = tracks[idx, 2:6]
             im = iou_mat(tb, tb); np.fill_diagonal(im, 0)

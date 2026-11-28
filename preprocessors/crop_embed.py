@@ -35,14 +35,17 @@ BACKBONES = {
 }
 
 
-def letterbox_crop(img, box, size, pad=0.1):
-    """Box padded by `pad` of its size, pasted centred on a grey square, resized to size x size (RGB uint8)."""
+def letterbox_crop(img, box, size, pad=0.1, gray=False):
+    """Box padded by `pad` of its size, pasted centred on a grey square, resized to size x size (RGB uint8).
+    gray=True: the crop is turned to grey levels first (3 equal channels), to measure what is left without clothing colour."""
     H, W = img.shape[:2]
     x1, y1, x2, y2 = [float(v) for v in box]
     pw, ph = pad * (x2 - x1), pad * (y2 - y1)
     x1, y1 = int(max(0, x1 - pw)), int(max(0, y1 - ph))
     x2, y2 = int(min(W, x2 + pw)), int(min(H, y2 + ph))
     c = img[y1:max(y2, y1 + 2), x1:max(x2, x1 + 2)]
+    if gray:
+        c = cv2.cvtColor(cv2.cvtColor(c, cv2.COLOR_BGR2GRAY), cv2.COLOR_GRAY2BGR)
     s = max(c.shape[:2])
     sq = np.full((s, s, 3), 124, np.uint8)
     oy, ox = (s - c.shape[0]) // 2, (s - c.shape[1]) // 2
@@ -81,8 +84,10 @@ class Embedder:
 
 
 def embed_crops(video, frames, boxes, backbone: str, device: str = "cuda", pad: float = 0.1, batch: int = 64,
-                embedder: Embedder | None = None) -> dict[str, np.ndarray]:
-    """One normalised vector per (frame, box), in input order. Decodes the video once, front to back."""
+                embedder: Embedder | None = None, gray: bool = False, frame_fn=None) -> dict[str, np.ndarray]:
+    """One normalised vector per (frame, box), in input order. Decodes the video once, front to back.
+    gray: grey-level crops. frame_fn(img) -> img: applied to each needed frame before cropping
+    (e.g. enroll_identity.degrade_frame, to simulate a smaller, blurrier person)."""
     frames = np.asarray(frames).astype(int)
     boxes = np.asarray(boxes, dtype=np.float32)
     emb = embedder or Embedder(backbone, device)
@@ -106,9 +111,11 @@ def embed_crops(video, frames, boxes, backbone: str, device: str = "cuda", pad: 
         ok, img = cap.read()
         if not ok:
             break
+        if frame_fn is not None and p < len(order) and frames[order[p]] == n:
+            img = frame_fn(img)
         while p < len(order) and frames[order[p]] == n:
             i = order[p]
-            buf.append(letterbox_crop(img, boxes[i], emb.size, pad)); buf_idx.append(i)
+            buf.append(letterbox_crop(img, boxes[i], emb.size, pad, gray)); buf_idx.append(i)
             p += 1
             if len(buf) >= batch:
                 flush()
@@ -125,18 +132,20 @@ def main():
     ap.add_argument("--rows", required=True, help="npz with 'frame' (N,) and 'box' (N, 4) xyxy, e.g. enroll_feat.npz")
     ap.add_argument("--backbone", nargs="+", required=True, choices=sorted(BACKBONES))
     ap.add_argument("--pad", type=float, default=0.1)
+    ap.add_argument("--gray", action="store_true", help="grey-level crops (no clothing colour); keys <backbone>_gray_<vector>")
     ap.add_argument("--device", default="cuda")
     ap.add_argument("--out", required=True)
     a = ap.parse_args()
     rows = np.load(a.rows)
     out = dict(np.load(a.out)) if Path(a.out).exists() else {}
-    for b in a.backbone:
-        if any(k.startswith(b + "_") and not k.endswith("wall_s") for k in out):
+    for b0 in a.backbone:
+        b = b0 + "_gray" if a.gray else b0
+        if any(k.startswith(b + "_") and not k.endswith("wall_s") and (a.gray or not k.startswith(b0 + "_gray_")) for k in out):
             print(f"{b}: cached in {a.out}")
             continue
-        e = Embedder(b, a.device)                       # model load not counted in the timing
+        e = Embedder(b0, a.device)                      # model load not counted in the timing
         t0 = time.time()
-        r = embed_crops(a.video, rows["frame"], rows["box"], b, a.device, a.pad, embedder=e)
+        r = embed_crops(a.video, rows["frame"], rows["box"], b0, a.device, a.pad, embedder=e, gray=a.gray)
         out.update({f"{b}_{k}": v for k, v in r.items()})
         out[f"{b}_wall_s"] = np.float32(time.time() - t0)
         print(f"{b}: {len(rows['frame'])} crops, {time.time() - t0:.1f}s (incl. decoding)")
